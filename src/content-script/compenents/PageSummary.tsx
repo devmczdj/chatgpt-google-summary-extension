@@ -130,9 +130,9 @@ function PageSummary(props: Props) {
         <div className="glarity--card">
           <div className="glarity--card__head ">
             <div className="glarity--card__head--title">
-              <a href="https://glarity.app" rel="noreferrer" target="_blank">
+              <span>
                 <img src={logo} alt={APP_TITLE} /> {APP_TITLE}
-              </a>{' '}
+              </span>{' '}
               <button
                 className={classNames('glarity--btn', 'glarity--btn__icon')}
                 onClick={openOptionsPage}

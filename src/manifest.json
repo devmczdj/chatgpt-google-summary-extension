@@ -11,7 +11,7 @@
     "128": "logo-128.png"
   },
   "host_permissions": [
-    "https://*.openai.com/"
+    "<all_urls>"
   ],
   "permissions": [
     "storage",

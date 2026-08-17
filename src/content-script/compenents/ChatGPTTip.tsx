@@ -44,7 +44,7 @@ function ChatGPTTip(props: Props) {
                   ) : (
                     <>
                       <Divider />
-                      Login to the ChatGPT web application to use the Glarity Summary.
+                      Log in to the ChatGPT web application to use AI Page Summary.
                     </>
                   )}
                 </>

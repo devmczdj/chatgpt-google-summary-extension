@@ -95,9 +95,9 @@ function truncateTranscript(str, providerConfigs) {
     textStr = newStr
   }
 
-  const tokenLimit = providerConfigs === ProviderType.GPT3 ? apiLimit : limit
+  const tokenLimit = providerConfigs === ProviderType.OpenAICompatible ? apiLimit : limit
 
-  // if (providerConfigs === ProviderType.GPT3) {
+  // if (providerConfigs === ProviderType.OpenAICompatible) {
   const encoded: { bpe: number[]; text: string[] } = tokenizer.encode(textStr)
   const bytes = encoded.bpe.length
 
@@ -121,9 +121,9 @@ function truncateTranscript(str, providerConfigs) {
 }
 
 function truncateTranscriptByToken(str, providerConfigs) {
-  const tokenLimit = providerConfigs === ProviderType.GPT3 ? apiLimit : limit
+  const tokenLimit = providerConfigs === ProviderType.OpenAICompatible ? apiLimit : limit
 
-  // if (providerConfigs === ProviderType.GPT3) {
+  // if (providerConfigs === ProviderType.OpenAICompatible) {
   const encoded: { bpe: number[]; text: string[] } = tokenizer.encode(str)
   const bytes = encoded.bpe.length
 

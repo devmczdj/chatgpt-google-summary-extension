@@ -12,7 +12,7 @@
   },
   "permissions": [
     "storage",
-    "https://*.openai.com/",
+    "<all_urls>",
     "activeTab",
     "tabs"
   ],

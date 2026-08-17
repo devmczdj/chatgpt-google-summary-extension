@@ -1,155 +1,47 @@
-# # Glarity - Summary for Google/YouTube with ChatGPT
+# AI 网页总结
 
-Chrome 浏览器扩展实现在 Google 搜索结果和 YouTube 视频旁边展示 ChatGPT 摘要，同时支持 Yahoo! JAPAN ニュース、PubMed、PMC、NewsPicks、Github、Nikkei、Bing、Google Patents, 以及任意网页的总结。
+一个用于总结搜索结果、视频和任意网页的浏览器扩展。本分支保留 ChatGPT 网页接口，并将原来固定的 OpenAI 模型配置改为通用的 OpenAI 兼容接口。
 
-## ⚠️ Tips:
+## Provider
 
-如果遇到不能选择 OpenAI API 模型, 麻烦删除并重新安装。
+### ChatGPT 网页接口
 
-或者尝试下载最新体验包 ([https://github.com/sparticleinc/chatgpt-google-summary-extension/tree/main/packages](https://github.com/sparticleinc/chatgpt-google-summary-extension/tree/main/packages)) 然后手动安装 ([https://github.com/sparticleinc/chatgpt-google-summary-extension#chrome](https://github.com/sparticleinc/chatgpt-google-summary-extension#chrome)).
+复用浏览器中当前的 ChatGPT 登录状态。它属于非官方网页接口，可能随 ChatGPT 网页改版而暂时失效。
 
-## Sponsors
+### OpenAI 兼容接口
 
+设置页面允许自由填写：
 
-<p align="center">
-  <a target="_blank" href="https://felo.ai">
-  <img alt="Felo AI"" src="https://felo.ai/blog/img-blog/logo.svg?sanitize=true" width="40">  <br />Felo AI
-  </a>
-</p>
+- API Base URL 或完整的 `/chat/completions` 地址
+- API Key（通过 `Authorization: Bearer ...` 发送）
+- 模型名称
 
+只要服务实现了 OpenAI Chat Completions 请求格式和 SSE 流式响应，就可以接入 OpenAI、DeepSeek、Kimi、MiMo、GLM 或自建网关。填写 Base URL 时，扩展会自动补全 `/chat/completions`。
 
-## 支持网站
+| 服务 | Base URL 示例 |
+| --- | --- |
+| OpenAI | `https://api.openai.com/v1` |
+| DeepSeek | `https://api.deepseek.com` |
+| Kimi | `https://api.moonshot.ai/v1` |
+| MiMo | `https://api.xiaomimimo.com/v1` |
+| GLM | `https://open.bigmodel.cn/api/paas/v4` |
 
-- Google
-- YouTube
-- Yahoo! 日本新闻
-- PubMed
-- PMC
-- NewsPicks
-- Github
-- Nikkei
-- Bing
-- Google Patents
-- Bilibili
-- 任意网站
+具体模型名和接口可用性由服务商决定，请以其最新文档为准。
 
-## 安装
+## 构建与安装
 
-[Chrome 应用市场](https://chrome.google.com/webstore/detail/summary-for-google-with-c/cmnlolelipjlhfkhpohphpedmkfbobjc)
+```bash
+npm install
+npm run build
+```
 
-[Firefox Add-ons 市场](https://addons.mozilla.org/zh-CN/firefox/addon/glarity/)
+- Chromium：在扩展管理页开启开发者模式，加载 `build/chromium/`。
+- Firefox：在 `about:debugging` 中临时加载 `build/firefox.zip`。
 
-## 功能
+由于兼容接口允许填写任意服务地址，扩展需要申请所有 URL 的主机访问权限。API Key 保存在浏览器扩展的本地存储中，请求由扩展直接发送至所选服务。
 
-- 支持 Google 搜索
-- 支持 YouTube 视频总结
-- 支持 Bing 搜索
-- 支持 Github 项目总结
-- 支持 Google 专利总结
-- 支持 Yahoo! JAPAN 新闻总结
-- 支持 PubMed 总结
-- 支持 PMC 总结
-- 支持 NewsPicks 总结
-- 支持 Nikkei 总结
-- 支持 Bilibili 视频总结
-- 支持任意网页的总结
-- 支持 iOS Safari/ macOS Safari
-- 支持 OpenAI 官方 API（GPT-3.5-turbo/text-davinci-003）
-- 支持 ChatGPT Plus
-- Markdown 格式渲染
-- 代码高亮
-- 暗色模式
-- 支持 ChatGPT 反馈
-- 复制结果
-- 切换语言
+## 上游与许可
 
-## 截图
+本项目基于 [sparticleinc/chatgpt-google-summary-extension](https://github.com/sparticleinc/chatgpt-google-summary-extension) 修改，并保留原项目的上游署名。
 
-### Google
-
-![Screenshot](screenshots/extension-google-zh-CN.png?raw=true)
-![Screenshot](screenshots/google-vs-chatgpt.png?raw=true)
-
-### YouTube
-
-![Screenshot](screenshots/extension-youtube-zh-CN.jpeg?raw=true)
-
-### Bilibili
-
-![Screenshot](screenshots/bilibili-cn.webp?raw=true)
-
-### iOS Safari /macOS Safari
-
-![Screenshot](screenshots/iOS-Safari-en.webp?raw=true)
-![Screenshot](screenshots/macOS-Safari-en.webp?raw=true)
-
-### Github
-
-![Github](screenshots/github-cn.png?raw=true)
-
-### Bing
-
-![Bing](screenshots/bing-cn.png)
-
-### Google Patents
-
-![Google Patents](screenshots/google-patents-zh.png)
-
-### Yahoo! JAPAN 新闻
-
-![Screenshot](screenshots/yahoo-japan.jpg?raw=true)
-
-### PubMed
-
-![Screenshot](screenshots/pubmed.jpg?raw=true)
-
-### PMC
-
-![Screenshot](screenshots/PMC-cn.png?raw=true)
-
-### NewsPicks
-
-![Screenshot](screenshots/newspicks-zh.jpg?raw=true)
-
-### Nikkei
-
-![Nikkei](screenshots/nikkei-jp.png)
-
-## 常见问题
-
-### 在 Brave 运行
-
-![Screenshot](screenshots/brave.png?raw=true)
-
-Disable "Prevent sites from fingerprinting me based on my language preferences" in `brave://settings/shields`
-
-## 手动安装
-
-1. Clone 代码
-2. `npm i`
-3. `npm run build`
-
-### 扩展包
-
-- [Chromium](packages/Glarity-chromium-beta.zip)
-- [Firefox](packages/Glarity-firefox-beta.zip)
-
-### Chrome
-
-1. 打开扩展管理窗口，chrome://extensions
-2. 激活开发者模式
-3. 载入 `build/chromium/`
-
-### Firefox
-
-1. 打开 `about:debugging#/runtime/this-firefox`
-2. 临时载入附加组件
-3. 载入 `build/firefox.zip`
-
-## Credit
-
-This project is a fork of [wong2/chatgpt-google-extension](https://github.com/wong2/chatgpt-google-extension), and borrows code from [qunash/chatgpt-advanced](https://github.com/qunash/chatgpt-advanced) & [YouTube Summary with ChatGPT](https://github.com/kazuki-sf/YouTube_Summary_with_ChatGPT)
-
-## License
-
-[GPL-3.0 license](LICENSE).
+使用 [GPL-3.0](LICENSE) 许可证。

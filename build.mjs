@@ -11,7 +11,7 @@ dotenv.config()
 
 const outdir = 'build'
 const packagesDir = 'packages'
-const appName = 'Glarity-'
+const appName = 'AI-Page-Summary-'
 
 const isDev = process.env.NODE_ENV === 'dev'
 

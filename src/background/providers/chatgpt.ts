@@ -7,16 +7,13 @@ import { BASE_URL } from '@/config'
 async function request(token: string, method: string, path: string, data?: unknown) {
   return fetch(`${BASE_URL}/backend-api${path}`, {
     method,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
     body: data === undefined ? undefined : JSON.stringify(data),
   })
-}
-
-export async function sendMessageFeedback(token: string, data: unknown) {
-  await request(token, 'POST', '/conversation/message_feedback', data)
 }
 
 export async function setConversationProperty(
@@ -35,7 +32,7 @@ export async function getChatGPTAccessToken(): Promise<string> {
   if (cache.get(KEY_ACCESS_TOKEN)) {
     return cache.get(KEY_ACCESS_TOKEN)
   }
-  const resp = await fetch(`${BASE_URL}/api/auth/session`)
+  const resp = await fetch(`${BASE_URL}/api/auth/session`, { credentials: 'include' })
   if (resp.status === 403) {
     throw new Error('CLOUDFLARE')
   }
@@ -82,6 +79,7 @@ export class ChatGPTProvider implements Provider {
 
     await fetchSSE(`${BASE_URL}/backend-api/conversation`, {
       method: 'POST',
+      credentials: 'include',
       signal: params.signal,
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +98,8 @@ export class ChatGPTProvider implements Provider {
           },
         ],
         model: modelName,
-        parent_message_id: uuidv4(),
+        conversation_id: params.conversationId,
+        parent_message_id: params.parentMessageId || uuidv4(),
       }),
       onMessage(message: string) {
         console.debug('sse message', message)

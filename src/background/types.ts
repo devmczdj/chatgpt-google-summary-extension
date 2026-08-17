@@ -1,5 +1,10 @@
 import { Answer } from '../messaging'
 
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export type Event =
   | {
       type: 'answer'
@@ -11,6 +16,9 @@ export type Event =
 
 export interface GenerateAnswerParams {
   prompt: string
+  messages?: ChatMessage[]
+  conversationId?: string
+  parentMessageId?: string
   onEvent: (event: Event) => void
   signal?: AbortSignal
 }

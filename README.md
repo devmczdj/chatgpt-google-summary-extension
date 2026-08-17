@@ -1,153 +1,61 @@
-# Glarity - Summary for Google/YouTube with ChatGPT
+# AI Page Summary
 
-Glarity Summary: an open-source ChatGPT Summary extension for YouTube, Google, Twitter, and any webpage. It provides cross-language summaries to effortlessly summarize videos, searches, PDFs, emails, and webpages. It supports free side-by-side translations, email writing assistance, Web Content Q&A, and much more
-Download the experience package ([https://github.com/sparticleinc/chatgpt-google-summary-extension/tree/main/packages](https://github.com/sparticleinc/chatgpt-google-summary-extension/tree/main/packages)) and adding it manually ([https://github.com/sparticleinc/chatgpt-google-summary-extension#chrome](https://github.com/sparticleinc/chatgpt-google-summary-extension#chrome)).
+A browser extension that summarizes search results, videos, and webpages. This fork keeps the
+ChatGPT web interface and adds a provider-neutral OpenAI-compatible API configuration.
 
-## Sponsors
+## Providers
 
+### ChatGPT web interface
 
-<p align="center">
-  <a target="_blank" href="https://felo.ai">
-  <img alt="Felo AI"" src="https://felo.ai/blog/img-blog/logo.svg?sanitize=true" width="40">  <br />Felo AI
-  </a>
-</p>
+Uses the current ChatGPT login session in the browser. This is an unofficial web interface and may
+be less stable than an API.
 
-## Supported Websites
+### OpenAI-compatible API
 
-- Google
-- YouTube
-- Yahoo! JAPAN ニュース
-- PubMed
-- PMC
-- NewsPicks
-- Github
-- Nikkei
-- Bing
-- Google Patents
-- Bilibili
-- Any website
-  (summary list:https://blog.glarity.app/getting-started/user-guide/summary-list)
+The options page accepts all three values as free text:
 
-## Installation
+- API Base URL or a complete `/chat/completions` endpoint
+- API key (sent as `Authorization: Bearer ...`)
+- Model name
 
-[Add from Chrome Web Store](https://chrome.google.com/webstore/detail/summary-for-google-with-c/cmnlolelipjlhfkhpohphpedmkfbobjc)
-[Add from Mozilla Add-on Store](https://addons.mozilla.org/zh-CN/firefox/addon/glarity/)
+This works with services that implement the OpenAI Chat Completions request and SSE streaming
+format, including compatible endpoints from OpenAI, DeepSeek, Kimi, MiMo, GLM, and self-hosted
+gateways. The extension appends `/chat/completions` when a base URL is entered.
 
-## Features
+Example base URLs:
 
-- Side-by-Side Translation (mirror translation, immersive translate)
-- Gmail quick reply
-- Supports Google search
-- Supports YouTube （YouTube videos transcript, summary, key moment)
-- Supports Github
-- Supports Bing
-- Supports Yahoo! JAPAN ニュース
-- Supports PubMed
-- Supports PMC
-- Supports NewsPicks
-- Supports Nikkei
-- Supports Google Patents
-- Support bilibili
-- Support twitter summary
-- Support summary of any web page
-- Support for iOS Safari/ macOS Safari
-- Supports the official OpenAI API (GPT-3.5-turbo/text-davinci-003)
-- Supports ChatGPT Plus
-- Markdown rendering
-- Code highlights
-- Dark mode
-- Provide feedback to improve ChatGPT
-- Copy to clipboard
-- Switch languages
-- Glarity AI model
+| Provider | Base URL |
+| --- | --- |
+| OpenAI | `https://api.openai.com/v1` |
+| DeepSeek | `https://api.deepseek.com` |
+| Kimi | `https://api.moonshot.ai/v1` |
+| MiMo | `https://api.xiaomimimo.com/v1` |
+| GLM | `https://open.bigmodel.cn/api/paas/v4` |
 
-## Screenshot
+Model names and endpoint availability are controlled by each provider. Check the provider's current
+documentation before saving the configuration.
 
-### Google
+## Build
 
-![Screenshot](screenshots/google-vs-chatgpt.png?raw=true)
-![Screenshot](screenshots/extension-google.png?raw=true)
+```bash
+npm install
+npm run build
+```
 
-### YouTube
+Load `build/chromium/` as an unpacked extension in Chromium, or load `build/firefox.zip` as a
+temporary Firefox add-on.
 
-![Screenshot](screenshots/extension-youtube.jpeg?raw=true)
+The compatible API can point to any user-supplied host, so the extension requests all-URL host
+permission. API keys are stored in the browser extension's local storage and requests are sent
+directly to the selected endpoint.
 
-### Bilibili
+## Upstream and license
 
-![Screenshot](screenshots/bilibili-cn.webp?raw=true)
+This project is based on
+[sparticleinc/chatgpt-google-summary-extension](https://github.com/sparticleinc/chatgpt-google-summary-extension),
+which in turn credits
+[wong2/chatgpt-google-extension](https://github.com/wong2/chatgpt-google-extension),
+[qunash/chatgpt-advanced](https://github.com/qunash/chatgpt-advanced), and
+[YouTube Summary with ChatGPT](https://github.com/kazuki-sf/YouTube_Summary_with_ChatGPT).
 
-### iOS Safari /macOS Safari
-
-![Screenshot](screenshots/iOS-Safari-en.webp?raw=true)
-![Screenshot](screenshots/macOS-Safari-en.webp?raw=true)
-
-### Github
-
-![Github](screenshots/github-en.png?raw=true)
-
-### Bing
-
-![Bing](screenshots/bing-en.png)
-
-### Google Patents
-
-![Google Patents](screenshots/google-patents-en.png)
-
-### Yahoo! JAPAN ニュース
-
-![Screenshot](screenshots/yahoo-japan.jpg?raw=true)
-
-### PubMed
-
-![Screenshot](screenshots/pubmed.jpg?raw=true)
-
-### PMC
-
-![Screenshot](screenshots/PMC-en.png?raw=true)
-
-### NewsPicks
-
-![Screenshot](screenshots/newspicks-jp.jpg?raw=true)
-
-### Nikkei
-
-![Nikkei](screenshots/nikkei-jp.png)
-
-## Troubleshooting
-
-### How to make it work in Brave
-
-![Screenshot](screenshots/brave.png?raw=true)
-Disable "Prevent sites from fingerprinting me based on my language preferences" in `brave://settings/shields`
-
-## Build from source
-
-1. Clone the repo
-2. Install dependencies with `npm`
-3. `npm run build`
-
-### Packages
-
-- [Chromium](packages/Glarity-chromium-beta.zip)
-- [Firefox](packages/Glarity-firefox-beta.zip)
-
-### Chrome
-
-1. Go to `chrome://extensions/`.
-2. At the top right, turn on `Developer mode`.
-3. Click `Load unpacked`.
-4. Find and select extension folder(`build/chromium/`).
-
-### Firefox
-
-1. Go to `about:debugging#/runtime/this-firefox`.
-2. Click `Load Temporary Add-on`.
-3. Find and select the extension file(`build/firefox.zip`).
-
-## Credit
-
-This project is a fork of [wong2/chatgpt-google-extension](https://github.com/wong2/chatgpt-google-extension), and borrows code from [qunash/chatgpt-advanced](https://github.com/qunash/chatgpt-advanced) & [YouTube Summary with ChatGPT](https://github.com/kazuki-sf/YouTube_Summary_with_ChatGPT)
-
-## License
-
-[GPL-3.0 license](LICENSE).
+Licensed under [GPL-3.0](LICENSE).

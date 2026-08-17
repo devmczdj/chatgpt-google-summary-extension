@@ -1,5 +1,5 @@
 {
-  "name": "chatgpt-google-summary-extension",
+  "name": "ai-page-summary-extension",
   "author": "givebest",
   "scripts": {
     "dev": "cross-env NODE_ENV='dev' node build.mjs",

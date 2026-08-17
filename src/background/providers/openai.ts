@@ -1,70 +1,52 @@
 import { fetchSSE } from '../fetch-sse'
 import { GenerateAnswerParams, Provider } from '../types'
-import { getProviderConfigs, ProviderType, DEFAULT_MODEL, DEFAULT_API_HOST } from '@/config'
+import { normalizeChatCompletionsUrl, OpenAICompatibleProviderConfig } from '@/config'
 
 export class OpenAIProvider implements Provider {
-  constructor(private token: string, private model: string) {
-    this.token = token
-    this.model = model
-  }
-
-  private buildPrompt(prompt: string): string {
-    if (this.model.startsWith('text-chat-davinci')) {
-      return `Respond conversationally.<|im_end|>\n\nUser: ${prompt}<|im_sep|>\nChatGPT:`
-    }
-    return prompt
-  }
-
-  private buildMessages(prompt: string) {
-    return [{ role: 'user', content: prompt }]
-  }
+  constructor(private config: OpenAICompatibleProviderConfig) {}
 
   async generateAnswer(params: GenerateAnswerParams) {
-    const [config] = await Promise.all([getProviderConfigs()])
-
-    const gptModel = config.configs[ProviderType.GPT3]?.model ?? DEFAULT_MODEL
-    const apiHost = config.configs[ProviderType.GPT3]?.apiHost || DEFAULT_API_HOST
-    const apiPath = config.configs[ProviderType.GPT3]?.apiPath
-
-    let url = ''
-    let reqParams = {
-      model: this.model,
-      // prompt: this.buildPrompt(params.prompt),
-      // messages: this.buildMessages(params.prompt),
+    const url = normalizeChatCompletionsUrl(this.config.apiUrl)
+    const reqParams = {
+      model: this.config.model,
+      messages: params.messages || [{ role: 'user', content: params.prompt }],
       stream: true,
-      max_tokens: 800,
-      // temperature: 0.5,
-    }
-    if (gptModel === 'text-davinci-003') {
-      url = `https://${apiHost}${apiPath || '/v1/completions'}`
-      reqParams = { ...reqParams, ...{ prompt: this.buildPrompt(params.prompt) } }
-    } else {
-      url = `https://${apiHost}${apiPath || '/v1/chat/completions'}`
-      reqParams = { ...reqParams, ...{ messages: this.buildMessages(params.prompt) } }
     }
 
     let result = ''
+    let completed = false
+    let streamError: Error | undefined
     await fetchSSE(url, {
       method: 'POST',
       signal: params.signal,
       headers: {
+        Accept: 'text/event-stream',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`,
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify(reqParams),
       onMessage(message) {
         console.debug('sse message', message)
         if (message === '[DONE]') {
+          completed = true
           params.onEvent({ type: 'done' })
           return
         }
         let data
         try {
           data = JSON.parse(message)
-          const text =
-            gptModel === 'text-davinci-003' ? data.choices[0].text : data.choices[0].delta.content
+        } catch (err) {
+          console.error('Unable to parse API stream message', err)
+          return
+        }
+        if (data.error) {
+          streamError = new Error(data.error.message || JSON.stringify(data.error))
+          return
+        }
+        try {
+          const text = data.choices?.[0]?.delta?.content
 
-          if (text === undefined || text === '<|im_end|>' || text === '<|im_sep|>') {
+          if (!text) {
             return
           }
           result += text
@@ -77,11 +59,17 @@ export class OpenAIProvider implements Provider {
             },
           })
         } catch (err) {
-          // console.error(err)
+          console.error('Unable to process API stream message', err)
           return
         }
       },
     })
+    if (streamError) {
+      throw streamError
+    }
+    if (!completed) {
+      params.onEvent({ type: 'done' })
+    }
     return {}
   }
 }

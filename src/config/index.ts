@@ -77,40 +77,48 @@ export async function updateUserConfig(updates: Partial<UserConfig>) {
 
 export enum ProviderType {
   ChatGPT = 'chatgpt',
-  GPT3 = 'gpt3',
+  OpenAICompatible = 'openai-compatible',
 }
 
-interface GPT3ProviderConfig {
+export interface OpenAICompatibleProviderConfig {
   model: string
   apiKey: string
-  apiHost: string
-  apiPath: string | undefined
+  apiUrl: string
 }
 
 export interface ProviderConfigs {
   provider: ProviderType
   configs: {
-    [ProviderType.GPT3]: GPT3ProviderConfig | undefined
+    [ProviderType.OpenAICompatible]: OpenAICompatibleProviderConfig | undefined
   }
 }
 
 export async function getProviderConfigs(): Promise<ProviderConfigs> {
-  const { provider = ProviderType.ChatGPT } = await Browser.storage.local.get('provider')
-  const configKey = `provider:${ProviderType.GPT3}`
-  const result = await Browser.storage.local.get(configKey)
-  const configKeys = result[configKey]?.apiKey?.split(',').map(v => v.trim()) ?? []
-  const randomIndex = configKeys.length > 0 ? Math.floor(Math.random() * configKeys.length) : 0;
-  const apiKey = configKeys[randomIndex] ?? ''
-  result[configKey].apiKey = apiKey
-  if (!result[configKey]) {
-    result[configKey] = {}
-  }
-  result[configKey].apiKey = apiKey
+  const compatibleKey = `provider:${ProviderType.OpenAICompatible}`
+  const legacyKey = 'provider:gpt3'
+  const result = await Browser.storage.local.get(['provider', compatibleKey, legacyKey])
+  const rawProvider = result.provider ?? ProviderType.ChatGPT
+  const provider = rawProvider === 'gpt3' ? ProviderType.OpenAICompatible : rawProvider
+  const stored = result[compatibleKey] ?? result[legacyKey]
+
+  // Migrate configurations saved by the original extension.
+  const legacyApiUrl = stored?.apiHost
+    ? `${/^https?:\/\//.test(stored.apiHost) ? '' : 'https://'}${stored.apiHost}${
+        stored.apiPath || '/v1/chat/completions'
+      }`
+    : undefined
+  const compatibleConfig = stored
+    ? {
+        model: stored.model || DEFAULT_MODEL,
+        apiKey: stored.apiKey || '',
+        apiUrl: stored.apiUrl || legacyApiUrl || DEFAULT_API_URL,
+      }
+    : undefined
 
   return {
     provider,
     configs: {
-      [ProviderType.GPT3]: result[configKey],
+      [ProviderType.OpenAICompatible]: compatibleConfig,
     },
   }
 }
@@ -121,11 +129,11 @@ export async function saveProviderConfigs(
 ) {
   return Browser.storage.local.set({
     provider,
-    [`provider:${ProviderType.GPT3}`]: configs[ProviderType.GPT3],
+    [`provider:${ProviderType.OpenAICompatible}`]: configs[ProviderType.OpenAICompatible],
   })
 }
 
-export const BASE_URL = 'https://chat.openai.com'
+export const BASE_URL = 'https://chatgpt.com'
 
 export const DEFAULT_PAGE_SUMMARY_BLACKLIST = `https://translate.google.com
 https://www.deepl.com
@@ -149,7 +157,20 @@ https://www.funimation.com
 https://www.viki.com
 https://map.baidu.com
 `
-export const APP_TITLE = `Glarity Summary`
+export const APP_TITLE = `AI Page Summary`
 
-export const DEFAULT_MODEL = 'gpt-3.5-turbo'
-export const DEFAULT_API_HOST = 'api.openai.com'
+export const DEFAULT_MODEL = 'gpt-4o-mini'
+export const DEFAULT_API_URL = 'https://api.openai.com/v1/chat/completions'
+
+export function normalizeChatCompletionsUrl(value: string): string {
+  const url = new URL(value.trim())
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error('API URL must use http:// or https://')
+  }
+
+  url.pathname = url.pathname.replace(/\/$/, '')
+  if (!url.pathname.endsWith('/chat/completions')) {
+    url.pathname += '/chat/completions'
+  }
+  return url.toString()
+}

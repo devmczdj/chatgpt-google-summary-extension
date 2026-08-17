@@ -1,41 +1,72 @@
 import Browser from 'webextension-polyfill'
 import { getProviderConfigs, ProviderType, BASE_URL } from '@/config'
-import { ChatGPTProvider, getChatGPTAccessToken, sendMessageFeedback } from './providers/chatgpt'
+import { ChatGPTProvider, getChatGPTAccessToken } from './providers/chatgpt'
 import { OpenAIProvider } from './providers/openai'
 import { Provider } from './types'
 import { isFirefox, tabSendMsg } from '@/utils/utils'
 
-async function generateAnswers(port: Browser.Runtime.Port, question: string) {
+interface GenerateRequest {
+  question: string
+  messages?: { role: 'user' | 'assistant'; content: string }[]
+  conversationId?: string
+  parentMessageId?: string
+}
+
+function safePostMessage(port: Browser.Runtime.Port, message: unknown) {
+  try {
+    port.postMessage(message)
+  } catch (error) {
+    console.debug('Port disconnected before the response was delivered', error)
+  }
+}
+
+async function generateAnswers(port: Browser.Runtime.Port, request: GenerateRequest) {
   const providerConfigs = await getProviderConfigs()
 
   let provider: Provider
   if (providerConfigs.provider === ProviderType.ChatGPT) {
     const token = await getChatGPTAccessToken()
     provider = new ChatGPTProvider(token)
-  } else if (providerConfigs.provider === ProviderType.GPT3) {
-    const { apiKey, model } = providerConfigs.configs[ProviderType.GPT3]!
-    provider = new OpenAIProvider(apiKey, model)
+  } else if (providerConfigs.provider === ProviderType.OpenAICompatible) {
+    const config = providerConfigs.configs[ProviderType.OpenAICompatible]
+    if (!config) {
+      throw new Error('Please configure the OpenAI-compatible API in the extension options.')
+    }
+    provider = new OpenAIProvider(config)
   } else {
     throw new Error(`Unknown provider ${providerConfigs.provider}`)
   }
 
   const controller = new AbortController()
+  let disconnected = false
+  let cleanup: (() => void) | undefined
   port.onDisconnect.addListener(() => {
+    disconnected = true
     controller.abort()
     cleanup?.()
   })
 
-  const { cleanup } = await provider.generateAnswer({
-    prompt: question,
+  const result = await provider.generateAnswer({
+    prompt: request.question,
+    messages: request.messages,
+    conversationId: request.conversationId,
+    parentMessageId: request.parentMessageId,
     signal: controller.signal,
     onEvent(event) {
-      if (event.type === 'done') {
-        port.postMessage({ event: 'DONE' })
+      if (disconnected) {
         return
       }
-      port.postMessage(event.data)
+      if (event.type === 'done') {
+        safePostMessage(port, { event: 'DONE' })
+        return
+      }
+      safePostMessage(port, event.data)
     },
   })
+  cleanup = result.cleanup
+  if (disconnected) {
+    cleanup?.()
+  }
 }
 
 async function createTab(url) {
@@ -73,19 +104,17 @@ Browser.runtime.onConnect.addListener(async (port) => {
   port.onMessage.addListener(async (msg) => {
     console.debug('received msg', msg)
     try {
-      await generateAnswers(port, msg.question)
+      await generateAnswers(port, msg)
     } catch (err: any) {
-      // console.error(err)
-      port.postMessage({ error: err.message })
+      if (err?.name !== 'AbortError') {
+        safePostMessage(port, { error: err.message })
+      }
     }
   })
 })
 
 Browser.runtime.onMessage.addListener(async (message) => {
-  if (message.type === 'FEEDBACK') {
-    const token = await getChatGPTAccessToken()
-    await sendMessageFeedback(token, message.data)
-  } else if (message.type === 'OPEN_OPTIONS_PAGE') {
+  if (message.type === 'OPEN_OPTIONS_PAGE') {
     Browser.runtime.openOptionsPage()
   } else if (message.type === 'GET_ACCESS_TOKEN') {
     return getChatGPTAccessToken()

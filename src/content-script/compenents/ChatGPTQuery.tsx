@@ -1,17 +1,15 @@
-import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import classNames from 'classnames'
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { Loading } from '@geist-ui/core'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import Browser from 'webextension-polyfill'
+import { CheckIcon, CopyIcon } from '@primer/octicons-react'
 import { Answer } from '@/messaging'
-import ChatGPTFeedback from './ChatGPTFeedback'
-import { debounce } from 'lodash-es'
-import { isBraveBrowser, shouldShowRatingTip } from '@/content-script/utils'
+import { isBraveBrowser } from '@/content-script/utils'
 import { BASE_URL } from '@/config'
 import { isIOS, isSafari } from '@/utils/utils'
-import { getUserConfig } from '@/config'
 
 import '@/content-script/styles.scss'
 
@@ -23,59 +21,138 @@ interface Props {
   currentTime?: number
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+interface GenerateRequest {
+  question: string
+  messages: ChatMessage[]
+  conversationId?: string
+  parentMessageId?: string
+}
+
+interface CompletedTurn {
+  question?: string
+  answer: Answer
+}
+
+const markdownComponents = {
+  a: ({ node: _node, ...props }: any) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+}
+
 function ChatGPTQuery(props: Props) {
   const { onStatusChange, currentTime, question } = props
 
   const [answer, setAnswer] = useState<Answer | null>(null)
+  const [completedTurns, setCompletedTurns] = useState<CompletedTurn[]>([])
+  const [currentQuestion, setCurrentQuestion] = useState<string>()
+  const [followUp, setFollowUp] = useState('')
   const [error, setError] = useState('')
-  const [retry, setRetry] = useState(0)
   const [done, setDone] = useState(false)
-  const [showTip, setShowTip] = useState(false)
-  const [continueConversation, setContinueConversation] = useState(false)
+  const [stopped, setStopped] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [status, setStatus] = useState<QueryStatus>()
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  const portRef = useRef<Browser.Runtime.Port | null>(null)
+  const historyRef = useRef<ChatMessage[]>([])
+  const activeRequestRef = useRef<GenerateRequest>()
 
-  const requestGpt = useMemo(() => {
-    console.log('question', question)
+  const disconnect = useCallback(() => {
+    const port = portRef.current
+    portRef.current = null
+    if (port) {
+      try {
+        port.disconnect()
+      } catch (error) {
+        console.debug('Port already disconnected', error)
+      }
+    }
+  }, [])
 
-    return debounce(() => {
+  const startRequest = useCallback(
+    (request: GenerateRequest) => {
+      disconnect()
+      activeRequestRef.current = request
+      setAnswer(null)
+      setError('')
+      setDone(false)
+      setStopped(false)
       setStatus(undefined)
-      // setError('error')
-      // setStatus('error')
-      // return
 
       const port = Browser.runtime.connect()
-      const listener = (msg: any) => {
+      portRef.current = port
+      port.onMessage.addListener((msg: any) => {
         if (msg.text) {
-          let text = msg.text || ''
-          text = text.replace(/^(\s|:\n\n)+|(:)+|(:\s)$/g, '')
-
-          setAnswer({ ...msg, ...{ text } })
+          const text = String(msg.text).replace(/^(\s|:\n\n)+|(:)+|(:\s)$/g, '')
+          setAnswer({ ...msg, text })
           setStatus('success')
         } else if (msg.error) {
           setError(msg.error)
           setStatus('error')
+          disconnect()
         } else if (msg.event === 'DONE') {
           setDone(true)
           setStatus('done')
+          disconnect()
         }
+      })
+      port.postMessage(request)
+    },
+    [disconnect],
+  )
+
+  const stopGeneration = useCallback(() => {
+    disconnect()
+    setDone(true)
+    setStopped(true)
+    setStatus('done')
+  }, [disconnect])
+
+  const copyAnswer = useCallback(async () => {
+    if (!answer) {
+      return
+    }
+    await navigator.clipboard.writeText(answer.text)
+    setCopied(true)
+  }, [answer])
+
+  const submitFollowUp = useCallback(
+    (event: Event) => {
+      event.preventDefault()
+      const nextQuestion = followUp.trim()
+      if (!nextQuestion || !answer || !done) {
+        return
       }
-      port.onMessage.addListener(listener)
-      port.postMessage({ question })
-      return () => {
-        port.onMessage.removeListener(listener)
-        port.disconnect()
-      }
-    }, 1000)
-  }, [question])
+
+      setCompletedTurns((turns) => [...turns, { question: currentQuestion, answer }])
+      const messages: ChatMessage[] = [
+        ...historyRef.current,
+        { role: 'assistant', content: answer.text },
+        { role: 'user', content: nextQuestion },
+      ]
+      historyRef.current = messages
+      setCurrentQuestion(nextQuestion)
+      setFollowUp('')
+      startRequest({
+        question: nextQuestion,
+        messages,
+        conversationId: answer.conversationId,
+        parentMessageId: answer.messageId,
+      })
+    },
+    [answer, currentQuestion, done, followUp, startRequest],
+  )
+
+  const retryCurrentRequest = useCallback(() => {
+    if (activeRequestRef.current) {
+      startRequest(activeRequestRef.current)
+    }
+  }, [startRequest])
 
   const newTab = useCallback(() => {
-    Browser.runtime.sendMessage({
-      type: 'NEW_TAB',
-      data: {
-        url: `${BASE_URL}/chat`,
-      },
-    })
+    Browser.runtime.sendMessage({ type: 'NEW_TAB', data: { url: `${BASE_URL}/chat` } })
   }, [])
 
   const openOptionsPage = useCallback(() => {
@@ -87,80 +164,123 @@ function ChatGPTQuery(props: Props) {
   }, [onStatusChange, status])
 
   useEffect(() => {
-    requestGpt()
-  }, [question, retry, currentTime, requestGpt])
+    disconnect()
+    setCompletedTurns([])
+    setCurrentQuestion(undefined)
+    setFollowUp('')
+    setAnswer(null)
+    historyRef.current = [{ role: 'user', content: question }]
+    const initialRequest: GenerateRequest = {
+      question,
+      messages: historyRef.current,
+    }
+    activeRequestRef.current = initialRequest
+    const timer = setTimeout(() => startRequest(initialRequest), 1000)
+    return () => {
+      clearTimeout(timer)
+      disconnect()
+    }
+  }, [question, currentTime, disconnect, startRequest])
 
-  // retry error on focus
   useEffect(() => {
     const onFocus = () => {
-      if (error && (error == 'UNAUTHORIZED' || error === 'CLOUDFLARE')) {
+      if (error === 'UNAUTHORIZED' || error === 'CLOUDFLARE') {
         setError('')
-        setRetry((r) => r + 1)
+        retryCurrentRequest()
       }
     }
     window.addEventListener('focus', onFocus)
-    return () => {
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [error])
+    return () => window.removeEventListener('focus', onFocus)
+  }, [error, retryCurrentRequest])
 
   useEffect(() => {
-    shouldShowRatingTip().then((show) => setShowTip(show))
-  }, [])
-
-  useEffect(() => {
-    getUserConfig().then((settings) => setContinueConversation(settings.continueConversation))
-  }, [])
-
-  useEffect(() => {
-    const wrap: HTMLDivElement | null = wrapRef.current
-    if (!wrap) {
+    if (!copied) {
       return
     }
+    const timer = setTimeout(() => setCopied(false), 800)
+    return () => clearTimeout(timer)
+  }, [copied])
 
+  useEffect(() => {
     if (answer) {
-      wrap.scrollTo({
-        top: 10000,
-        behavior: 'smooth',
-      })
+      wrapRef.current?.scrollTo({ top: 10000, behavior: 'smooth' })
     }
   }, [answer])
 
-  if (answer) {
+  const hasConversation = completedTurns.length > 0 || !!answer || !!currentQuestion
+
+  if (hasConversation) {
     return (
       <div className="markdown-body gpt-markdown" id="gpt-answer" dir="auto">
         <div className="glarity--chatgpt--header">
-          <ChatGPTFeedback
-            messageId={answer.messageId}
-            conversationId={answer.conversationId}
-            answerText={answer.text}
-          />
+          {!done ? (
+            <button className="glarity--generation-action" onClick={stopGeneration}>
+              <span className="glarity--stop-symbol" /> Stop
+            </button>
+          ) : (
+            answer && (
+              <button
+                className="glarity--generation-action glarity--generation-action--icon"
+                onClick={copyAnswer}
+                title="Copy latest answer"
+                aria-label="Copy latest answer"
+              >
+                {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+              </button>
+            )
+          )}
         </div>
+
         <div className="glarity--chatgpt--content" ref={wrapRef}>
-          <ReactMarkdown rehypePlugins={[[rehypeHighlight, { detect: true }]]}>
-            {answer.text}
-          </ReactMarkdown>
+          {completedTurns.map((turn, index) => (
+            <div className="glarity--conversation-turn" key={index}>
+              {turn.question && <div className="glarity--user-message">{turn.question}</div>}
+              <ReactMarkdown
+                components={markdownComponents}
+                rehypePlugins={[[rehypeHighlight, { detect: true }]]}
+              >
+                {turn.answer.text}
+              </ReactMarkdown>
+            </div>
+          ))}
+
+          {currentQuestion && <div className="glarity--user-message">{currentQuestion}</div>}
+          {answer ? (
+            <ReactMarkdown
+              components={markdownComponents}
+              rehypePlugins={[[rehypeHighlight, { detect: true }]]}
+            >
+              {answer.text}
+            </ReactMarkdown>
+          ) : stopped ? (
+            <p className="glarity--generation-stopped">Generation stopped.</p>
+          ) : error ? null : (
+            <Loading />
+          )}
         </div>
-        {(continueConversation && answer.conversationId && done) && (
-          <div>
-            <a href={`https://chat.openai.com/c/${answer.conversationId}`} target="_blank">
-              Continue conversation
-            </a>
-          </div>
+
+        {error && (
+          <p className="glarity--query-error">
+            {error}
+            <button className="glarity--retry-button" onClick={retryCurrentRequest}>
+              Retry
+            </button>
+          </p>
         )}
 
-        {/* {done && showTip && (
-          <p className="glarity--italic glarity--mt-2">
-            Enjoy this extension? Give us a 5-star rating at{' '}
-            <a
-              href="https://chatgpt4google.com/chrome?utm_source=rating_tip"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Chrome Web Store
-            </a>
-          </p>
-        )} */}
+        {done && answer && (
+          <form className="glarity--follow-up" onSubmit={submitFollowUp}>
+            <input
+              value={followUp}
+              onInput={(event) => setFollowUp(event.currentTarget.value)}
+              placeholder="Ask a follow-up question"
+              aria-label="Ask a follow-up question"
+            />
+            <button type="submit" disabled={!followUp.trim()} aria-label="Send follow-up question">
+              ➤
+            </button>
+          </form>
+        )}
       </div>
     )
   }
@@ -170,7 +290,7 @@ function ChatGPTQuery(props: Props) {
       <p>
         {isSafari ? (
           <>
-            Please set OpenAI API Key in the{' '}
+            Please set an API key in the{' '}
             <button
               className={classNames('glarity--btn', 'glarity--btn__primary', 'glarity--btn__small')}
               onClick={openOptionsPage}
@@ -181,81 +301,50 @@ function ChatGPTQuery(props: Props) {
           </>
         ) : (
           <>
-            {' '}
-            Please login and pass Cloudflare check at{' '}
+            Please log in and pass the security check at{' '}
             <button
               className={classNames('glarity--btn', 'glarity--btn__primary', 'glarity--btn__small')}
               onClick={newTab}
             >
-              chat.openai.com
+              chatgpt.com
             </button>
             .
           </>
         )}
-
-        {retry > 0 &&
-          !isIOS &&
-          (() => {
-            if (isBraveBrowser()) {
-              return (
-                <span className="glarity--block glarity--mt-2">
-                  Still not working? Follow{' '}
-                  <a href="https://github.com/sparticleinc/chatgpt-google-summary-extension#troubleshooting">
-                    Brave Troubleshooting
-                  </a>
-                </span>
-              )
-            } else {
-              return (
-                <span className="glarity--italic glarity--block glarity--mt-2 glarity--text-xs">
-                  OpenAI requires passing a security check every once in a while. If this keeps
-                  happening, change AI provider to OpenAI API in the{' '}
-                  <button
-                    className={classNames(
-                      'glarity--btn',
-                      'glarity--btn__primary',
-                      'glarity--btn__small',
-                    )}
-                    onClick={openOptionsPage}
-                  >
-                    extension options
-                  </button>
-                  .
-                </span>
-              )
-            }
-          })()}
+        {!isIOS && isBraveBrowser() && (
+          <span className="glarity--block glarity--mt-2">
+            Check Brave Shields if login still fails.
+          </span>
+        )}
       </p>
     )
   }
+
   if (error) {
     return (
       <p>
-        Failed to load response from ChatGPT:
-        <span className="glarity--break-all glarity--block">{error}</span>
-        <a
-          href="javascript:void(0)"
-          onClick={() => {
-            setError('')
-            setRetry((r) => r + 1)
-          }}
-        >
+        Failed to load response: <span className="glarity--break-all">{error}</span>{' '}
+        <button className="glarity--retry-button" onClick={retryCurrentRequest}>
           Retry
-        </a>
-        <br />
-        If this keeps happening, change AI provider to OpenAI API in the{' '}
-        <button
-          className={classNames('glarity--btn', 'glarity--btn__primary', 'glarity--btn__small')}
-          onClick={openOptionsPage}
-        >
-          extension options
         </button>
-        .
       </p>
     )
   }
 
-  return <Loading />
+  if (stopped) {
+    return <p className="glarity--generation-stopped">Generation stopped.</p>
+  }
+
+  return (
+    <div className="glarity--query-loading">
+      <div className="glarity--chatgpt--header">
+        <button className="glarity--generation-action" onClick={stopGeneration}>
+          <span className="glarity--stop-symbol" /> Stop
+        </button>
+      </div>
+      <Loading />
+    </div>
+  )
 }
 
 export default memo(ChatGPTQuery)

@@ -35,6 +35,7 @@ function ChatGPTContainer(props: Props) {
   const [queryStatus, setQueryStatus] = useState<QueryStatus>()
   const [copied, setCopied] = useState(false)
   const [transcriptShow, setTranscriptShow] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [selectedOption, setSelectedOption] = useState(0)
   const [loading, setLoading] = useState(false)
   const [theme, setTheme] = useState(Theme.Auto)
@@ -151,34 +152,51 @@ function ChatGPTContainer(props: Props) {
           <div className="glarity--chatgpt">
             <div className="glarity--header">
               <div>
-                <a
-                  href="https://glarity.app"
-                  rel="noreferrer"
-                  target="_blank"
-                  className="glarity--header__logo"
-                >
+                <span className="glarity--header__logo">
                   <img src={logo} alt={APP_TITLE} />
                   {APP_TITLE}
-                </a>
-                <a href="javascript:;" className="glarity--header__logo" onClick={openOptionsPage}>
+                </span>
+                <button
+                  type="button"
+                  className="glarity--header__logo glarity--header__button"
+                  onClick={openOptionsPage}
+                  title="Open settings"
+                  aria-label="Open settings"
+                >
                   <GearIcon size={14} />
-                </a>
+                </button>
 
                 {loading ? (
                   <span className="glarity--header__logo">
                     <Spinner className="glarity--icon--loading" />
                   </span>
                 ) : (
-                  <a href="javascript:;" className="glarity--header__logo" onClick={onRefresh}>
+                  <button
+                    type="button"
+                    className="glarity--header__logo glarity--header__button"
+                    onClick={onRefresh}
+                    title="Regenerate"
+                    aria-label="Regenerate"
+                  >
                     <SyncIcon size={14} />
-                  </a>
+                  </button>
                 )}
               </div>
 
-              <div className="glarity--chatgpt__action"></div>
+              <div className="glarity--chatgpt__action">
+                <button
+                  type="button"
+                  className="glarity--header__button glarity--collapse-button"
+                  onClick={() => setCollapsed((value) => !value)}
+                  title={collapsed ? 'Expand' : 'Collapse'}
+                  aria-label={collapsed ? 'Expand summary' : 'Collapse summary'}
+                >
+                  {collapsed ? <ChevronDownIcon size={16} /> : <ChevronUpIcon size={16} />}
+                </button>
+              </div>
             </div>
 
-            <div className="glarity--main">
+            <div className="glarity--main" style={{ display: collapsed ? 'none' : undefined }}>
               <div className="glarity--main__container">
                 {questionProps.question ? (
                   <>
@@ -233,7 +251,7 @@ function ChatGPTContainer(props: Props) {
             </div>
 
             {questionProps.question && currentTranscript && (
-              <div className="glarity--main">
+              <div className="glarity--main" style={{ display: collapsed ? 'none' : undefined }}>
                 <div className="glarity--main__header">
                   <div className="glarity--main__header--title">
                     Transcript

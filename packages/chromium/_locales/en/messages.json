@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "AI Page Summary"
+  },
+  "appDesc": {
+    "message": "Display ChatGPT summaries alongside Google search results and YouTube videos"
+  }
+}

@@ -90,10 +90,10 @@ function PageSummaryComponent(props: PageSummaryProps) {
               checked={pageSummaryEnable}
               onChange={onPageSummaryEnableChange}
             />{' '}
-            Show Glarity Icon
+            Show page summary icon
           </Text>
           <Text className="glarity--mt-0" font="12px">
-            Once hidden, the Glarity icon will no longer appear on the page. However, you can open
+            Once hidden, the summary icon will no longer appear on the page. However, you can open
             the page summary by clicking on the browser extension icon.
           </Text>
         </Card.Content>
@@ -103,11 +103,11 @@ function PageSummaryComponent(props: PageSummaryProps) {
             Whitelist Sites
           </Text>
           <Text className="glarity--mt-0" font="12px">
-            Only display the Glarity icon on these sites (one URL per line).
+            Only display the summary icon on these sites (one URL per line).
           </Text>
           <Spacer h={0.5} />
           <Textarea
-            placeholder="https://glarity.app
+            placeholder="https://example.com
 https://reddit.com"
             resize={'vertical'}
             value={pageSummaryWhitelist}
@@ -121,11 +121,11 @@ https://reddit.com"
             Blacklist Sites
           </Text>
           <Text className="glarity--mt-0" font="12px">
-            Do not display Glarity icon on these sites (one URL per line).
+            Do not display the summary icon on these sites (one URL per line).
           </Text>
           <Spacer h={0.5} />
           <Textarea
-            placeholder="https://glarity.app
+            placeholder="https://example.com
 https://reddit.com"
             resize={'vertical'}
             value={pageSummaryBlacklist}
