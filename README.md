@@ -45,9 +45,10 @@ npm run build
 Load `build/chromium/` as an unpacked extension in Chromium, or load `build/firefox.zip` as a
 temporary Firefox add-on.
 
-Custom API hosts are requested as optional host permissions when you save an API URL. Built-in
-ChatGPT and Bilibili hosts stay in the required host permissions. API keys are stored in the
-browser extension's local storage and requests are sent directly to the selected endpoint.
+The extension requests access to all sites because its page-summary content script can run on any
+page and the OpenAI-compatible endpoint may be hosted on a user-supplied domain. API keys are
+stored in the browser extension's local storage and requests are sent directly to the selected
+endpoint.
 
 ## Upstream and license
 

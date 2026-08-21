@@ -38,7 +38,7 @@ npm run build
 - Chromium：在扩展管理页开启开发者模式，加载 `build/chromium/`。
 - Firefox：在 `about:debugging` 中临时加载 `build/firefox.zip`。
 
-保存自定义 API 地址时，扩展会按需申请该站点的可选主机权限；ChatGPT 与 Bilibili 等内置站点仍保留必要主机权限。API Key 保存在浏览器扩展的本地存储中，请求由扩展直接发送至所选服务。
+扩展会申请访问所有网站，因为页面总结内容脚本可在任意网页运行，且 OpenAI 兼容接口可能位于用户填写的域名。API Key 保存在浏览器扩展的本地存储中，请求由扩展直接发送至所选服务。
 
 ## 上游与许可
 

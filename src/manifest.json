@@ -10,22 +10,8 @@
     "48": "logo-48.png",
     "128": "logo-128.png"
   },
-  "host_permissions": [
-    "https://chatgpt.com/*",
-    "https://chat.openai.com/*",
-    "https://api.bilibili.com/*",
-    "https://*.bilibili.com/*",
-    "https://*.hdslb.com/*"
-  ],
-  "optional_host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
-  ],
+  "host_permissions": ["<all_urls>"],
+  "permissions": ["storage", "activeTab", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
@@ -37,12 +23,8 @@
   },
   "web_accessible_resources": [
     {
-      "resources": [
-        "bilibili-page-bridge.js"
-      ],
-      "matches": [
-        "https://*.bilibili.com/*"
-      ]
+      "resources": ["bilibili-page-bridge.js"],
+      "matches": ["https://*.bilibili.com/*"]
     }
   ],
   "options_ui": {
@@ -51,16 +33,9 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>",
-        "*://*/*"
-      ],
-      "js": [
-        "content-script.js"
-      ],
-      "css": [
-        "content-script.css"
-      ]
+      "matches": ["<all_urls>", "*://*/*"],
+      "js": ["content-script.js"],
+      "css": ["content-script.css"]
     }
   ]
 }

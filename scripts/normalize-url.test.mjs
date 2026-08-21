@@ -2,17 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import fs from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 // Evaluate the TypeScript helper by stripping simple type annotations.
 const sourcePath = path.resolve('src/config/api-url.ts')
 const source = fs.readFileSync(sourcePath, 'utf8')
 const js = source.replace(/: string/g, '')
-
-const tmp = path.resolve('scripts/.normalize-url.tmp.mjs')
-fs.writeFileSync(tmp, js)
-
-const mod = await import(pathToFileURL(tmp).href)
+const moduleUrl = `data:text/javascript,${encodeURIComponent(js)}`
+const mod = await import(moduleUrl)
 const { normalizeChatCompletionsUrl } = mod
 
 test('hostname-only DeepSeek base gets /v1/chat/completions', () => {
@@ -63,5 +59,3 @@ test('trailing slash on base is stripped before append', () => {
     'https://api.deepseek.com/v1/chat/completions',
   )
 })
-
-fs.unlinkSync(tmp)

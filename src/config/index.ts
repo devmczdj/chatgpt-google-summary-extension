@@ -162,4 +162,4 @@ export const APP_TITLE = `AI Page Summary`
 export const DEFAULT_MODEL = 'gpt-4o-mini'
 export const DEFAULT_API_URL = 'https://api.openai.com/v1/chat/completions'
 
-export { apiHostOriginPattern, normalizeChatCompletionsUrl } from './api-url'
+export { normalizeChatCompletionsUrl } from './api-url'

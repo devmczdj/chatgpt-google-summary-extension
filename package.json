@@ -1,6 +1,6 @@
 {
   "name": "ai-page-summary-extension",
-  "author": "DING ZIJIAN",
+  "author": "givebest",
   "scripts": {
     "dev": "cross-env NODE_ENV='dev' node build.mjs",
     "build": "cross-env NODE_ENV='production' node build.mjs",

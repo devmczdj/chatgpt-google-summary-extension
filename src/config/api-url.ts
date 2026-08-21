@@ -21,7 +21,3 @@ export function normalizeChatCompletionsUrl(value: string): string {
   }
   return url.toString()
 }
-
-export function apiHostOriginPattern(apiUrl: string): string {
-  return `${new URL(normalizeChatCompletionsUrl(apiUrl)).origin}/*`
-}

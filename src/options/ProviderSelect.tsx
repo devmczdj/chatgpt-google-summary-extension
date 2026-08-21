@@ -11,7 +11,6 @@ import {
   saveProviderConfigs,
 } from '@/config'
 import { isSafari } from '@/utils/utils'
-import { ensureApiHostPermission } from '@/utils/api-host-permission'
 
 interface ConfigProps {
   config: ProviderConfigs
@@ -41,11 +40,6 @@ const ConfigPanel: FC<ConfigProps> = ({ config }) => {
         apiUrl = normalizeChatCompletionsUrl(apiUrl)
       } catch (error) {
         alert(error instanceof Error ? error.message : 'Invalid API URL')
-        return
-      }
-      const granted = await ensureApiHostPermission(apiUrl)
-      if (!granted) {
-        alert('Host permission is required to call this API endpoint.')
         return
       }
     }

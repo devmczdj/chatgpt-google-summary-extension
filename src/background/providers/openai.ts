@@ -1,17 +1,12 @@
 import { fetchSSE } from '../fetch-sse'
 import { GenerateAnswerParams, Provider } from '../types'
 import { normalizeChatCompletionsUrl, OpenAICompatibleProviderConfig } from '@/config'
-import { hasApiHostPermission } from '@/utils/api-host-permission'
 
 export class OpenAIProvider implements Provider {
   constructor(private config: OpenAICompatibleProviderConfig) {}
 
   async generateAnswer(params: GenerateAnswerParams) {
     const url = normalizeChatCompletionsUrl(this.config.apiUrl)
-    const granted = await hasApiHostPermission(url)
-    if (!granted) {
-      throw new Error('Host permission is required to call this API endpoint. Open the options page and save the API URL again.')
-    }
     const reqParams = {
       model: this.config.model,
       messages: params.messages || [{ role: 'user', content: params.prompt }],
