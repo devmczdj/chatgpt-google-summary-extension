@@ -14,8 +14,19 @@ import ChatGPTQuery from '@/content-script/compenents/ChatGPTQuery'
 // import { extractFromHtml } from '@/utils/article-extractor/cjs/article-extractor.esm'
 import { getUserConfig, Language, getProviderConfigs, APP_TITLE } from '@/config'
 import { getSummaryPrompt } from '@/content-script/prompt'
-import { getPageSummaryContntent, getPageSummaryComments } from '@/content-script/utils'
-import { commentSummaryPrompt, pageSummaryPrompt, pageSummaryPromptHighlight } from '@/utils/prompt'
+import { extractSearchPage, formatSearchResults } from '@/content-script/search-results'
+import {
+  getPageSummaryContntent,
+  getPageSummaryComments,
+  siteConfig as siteConfigFn,
+} from '@/content-script/utils'
+import {
+  commentSummaryPrompt,
+  pageSummaryPrompt,
+  pageSummaryPromptHighlight,
+  searchPrompt,
+  searchPromptHighlight,
+} from '@/utils/prompt'
 import logo from '@/assets/img/logo.png'
 
 function PageSummary() {
@@ -26,6 +37,8 @@ function PageSummary() {
   const [latestAnswer, setLatestAnswer] = useState('')
   const [answerCopied, setAnswerCopied] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const stopGenerationRef = useRef<(() => void) | undefined>()
   const [cardOffset, setCardOffset] = useState({ x: 0, y: 0 })
   const dragState = useRef<{
     pointerId: number
@@ -114,12 +127,40 @@ function PageSummary() {
     Browser.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' })
   }, [])
 
+  const onGenerationChange = useCallback((generating: boolean, stop?: () => void) => {
+    stopGenerationRef.current = stop
+    setIsGenerating(generating)
+  }, [])
+
+  const stopGeneration = useCallback(() => {
+    stopGenerationRef.current?.()
+  }, [])
+
   const onSummary = useCallback(async () => {
     setLoading(true)
     setSupportSummary(true)
 
     setQuestion('')
     setLatestAnswer('')
+
+    const currentSiteConfig = siteConfigFn()
+    if (currentSiteConfig?.isSearchEngine) {
+      const searchPage = await extractSearchPage(currentSiteConfig)
+      if (searchPage?.results.length) {
+        const language = window.navigator.language
+        const userConfig = await getUserConfig()
+        const providerConfigs = await getProviderConfigs()
+        const searchList = formatSearchResults(searchPage.results)
+        const prompt = searchPrompt({
+          query: searchPage.query,
+          results: getSummaryPrompt(searchList, providerConfigs.provider),
+          language: userConfig.language === Language.Auto ? language : userConfig.language,
+          prompt: userConfig.promptSearch || searchPromptHighlight,
+        })
+        setQuestion(prompt)
+        return
+      }
+    }
 
     const pageComments = await getPageSummaryComments()
     const pageContent = await getPageSummaryContntent()
@@ -213,6 +254,45 @@ function PageSummary() {
         </div>
 
         <div className="glarity--card__head--action">
+          {isGenerating ? (
+            <button
+              type="button"
+              className="glarity--generation-action glarity--card__stop"
+              onClick={stopGeneration}
+              title="Stop generating"
+              aria-label="Stop generating"
+            >
+              <span className="glarity--stop-symbol" /> Stop
+            </button>
+          ) : (
+            <>
+              {question && (
+                <button
+                  type="button"
+                  className="glarity--card__head-button"
+                  onClick={onSummary}
+                  title="Regenerate"
+                  aria-label="Regenerate summary"
+                  disabled={loading}
+                >
+                  <SyncIcon size={16} />
+                </button>
+              )}
+
+              {latestAnswer && (
+                <button
+                  type="button"
+                  className="glarity--card__head-button"
+                  onClick={copyLatestAnswer}
+                  title="Copy"
+                  aria-label="Copy latest answer"
+                >
+                  {answerCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                </button>
+              )}
+            </>
+          )}
+
           <button
             type="button"
             className="glarity--card__head-button"
@@ -222,31 +302,6 @@ function PageSummary() {
           >
             <GearIcon size={16} />
           </button>
-
-          {question && (
-            <button
-              type="button"
-              className="glarity--card__head-button"
-              onClick={onSummary}
-              title="Regenerate"
-              aria-label="Regenerate summary"
-              disabled={loading}
-            >
-              <SyncIcon size={16} />
-            </button>
-          )}
-
-          {latestAnswer && (
-            <button
-              type="button"
-              className="glarity--card__head-button"
-              onClick={copyLatestAnswer}
-              title="Copy"
-              aria-label="Copy latest answer"
-            >
-              {answerCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-            </button>
-          )}
 
           <button
             type="button"
@@ -277,6 +332,7 @@ function PageSummary() {
               <ChatGPTQuery
                 question={question}
                 onAnswerChange={setLatestAnswer}
+                onGenerationChange={onGenerationChange}
                 onStatusChange={(status) => {
                   if (status) setLoading(false)
                 }}

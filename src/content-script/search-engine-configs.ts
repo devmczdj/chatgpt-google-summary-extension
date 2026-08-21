@@ -13,10 +13,17 @@ export interface SearchEngine {
   siteValue: string
   regex: string
   searchRegExp?: string
+  searchResultQuery?: string[]
+  searchTitleQuery?: string[]
+  searchSnippetQuery?: string[]
+  searchLinkQuery?: string[]
+  searchExcludeTemplates?: string[]
+  isSearchEngine?: boolean
 }
 
 export const config: Record<string, SearchEngine> = {
   google: {
+    isSearchEngine: true,
     inputQuery: ["input[name='q']"],
     sidebarContainerQuery: ['#rhs'],
     appendContainerQuery: ['#rcnt'],
@@ -26,8 +33,13 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'Google',
     siteValue: 'google',
     regex: '(^(www.)?google.)',
+    searchResultQuery: ['div.MjjYud'],
+    searchTitleQuery: ['h3.LC20lb'],
+    searchSnippetQuery: ['div.VwiC3b', 'span.ILfuVd', 'div.IThcWe'],
+    searchLinkQuery: ['div.yuRUbf > a', 'h3 > a'],
   },
   bing: {
+    isSearchEngine: true,
     inputQuery: ["[name='q']"],
     sidebarContainerQuery: ['ol#b_context'],
     appendContainerQuery: ['#b_content'],
@@ -35,8 +47,13 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'Bing',
     siteValue: 'bing',
     regex: '(^(www|cn).?bing.com)',
+    searchResultQuery: ['main > ol > li.b_algo', 'ol#b_results > li.b_algo'],
+    searchTitleQuery: ['h2 a', '.b_title a'],
+    searchSnippetQuery: ['.b_lineclamp2', '.b_lineclamp3', '.b_caption p'],
+    searchLinkQuery: ['h2 a', '.b_title a'],
   },
   yahoo: {
+    isSearchEngine: true,
     inputQuery: ["input[name='p']"],
     sidebarContainerQuery: ['#right', '.Contents__inner.Contents__inner--sub'],
     appendContainerQuery: ['#cols', '#contents__wrap'],
@@ -44,17 +61,27 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'Yahoo!',
     siteValue: 'yahoo',
     regex: '(^(search.)?yahoo.)',
+    searchResultQuery: ['#web ol > li', '.algo'],
+    searchTitleQuery: ['h3 a', '.title a'],
+    searchSnippetQuery: ['.compText', '.fc-falcon'],
+    searchLinkQuery: ['h3 a', '.title a'],
   },
   duckduckgo: {
+    isSearchEngine: true,
     inputQuery: ["input[name='q']"],
     sidebarContainerQuery: ['.results--sidebar.js-results-sidebar'],
-    appendContainerQuery: ['#links_wrapper'],
+    appendContainerQuery: ['main', '[data-testid="mainline"]', '#links_wrapper'],
     contentContainerQuery: [],
     siteName: 'DuckDuckGo',
     siteValue: 'duckduckgo',
     regex: '(^(www.)?duckduckgo.com)',
+    searchResultQuery: ['article[data-testid="result"]', '.result'],
+    searchTitleQuery: ['[data-testid="result-title-a"]', '.result__a'],
+    searchSnippetQuery: ['[data-testid="result-snippet"]', '[data-result="snippet"]'],
+    searchLinkQuery: ['[data-testid="result-title-a"]', '.result__a'],
   },
   baidu: {
+    isSearchEngine: true,
     inputQuery: ["input[name='wd']"],
     sidebarContainerQuery: ['#content_right'],
     appendContainerQuery: ['#container'],
@@ -78,8 +105,14 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'Baidu',
     siteValue: 'baidu',
     regex: '(^(www.)?baidu.com)',
+    searchResultQuery: ['#content_left > .result', '#content_left > .c-container'],
+    searchTitleQuery: ['h3 a', 'h3'],
+    searchSnippetQuery: ['.c-abstract', '[class*="content-right"]'],
+    searchLinkQuery: ['h3 a', 'a[href]'],
+    searchExcludeTemplates: ['recommend_list', 'ai_search_recommend', 'short_video'],
   },
   kagi: {
+    isSearchEngine: true,
     inputQuery: ["input[name='q']"],
     sidebarContainerQuery: ['.right-content-box > ._0_right_sidebar'],
     appendContainerQuery: ['#_0_app_content'],
@@ -87,8 +120,13 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'kagi',
     siteValue: 'kagi',
     regex: '(^(www.)?kagi.com)',
+    searchResultQuery: ['.search-result'],
+    searchTitleQuery: ['.search-result-title a', 'h3 a'],
+    searchSnippetQuery: ['.search-result__snippet', '.search-result-snippet'],
+    searchLinkQuery: ['.search-result-title a', 'h3 a'],
   },
   yandex: {
+    isSearchEngine: true,
     inputQuery: ["input[name='text']"],
     sidebarContainerQuery: ['#search-result-aside'],
     appendContainerQuery: [],
@@ -96,8 +134,13 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'Yandex',
     siteValue: 'yandex',
     regex: '(^(w+.)?yandex.)',
+    searchResultQuery: ['.serp-item'],
+    searchTitleQuery: ['.OrganicTitle-Link', 'h2 a'],
+    searchSnippetQuery: ['.OrganicTextContentSpan', '.TextContainer'],
+    searchLinkQuery: ['.OrganicTitle-Link', 'h2 a'],
   },
   naver: {
+    isSearchEngine: true,
     inputQuery: ["input[name='query']"],
     sidebarContainerQuery: ['#sub_pack'],
     appendContainerQuery: ['#content'],
@@ -105,17 +148,27 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'NAVER',
     siteValue: 'naver',
     regex: '(^(search.)?naver.com)',
+    searchResultQuery: ['.api_subject_bx', '.sc_new .bx'],
+    searchTitleQuery: ['.title_link', '.total_tit a'],
+    searchSnippetQuery: ['.dsc_txt', '.api_txt_lines'],
+    searchLinkQuery: ['.title_link', '.total_tit a'],
   },
   brave: {
+    isSearchEngine: true,
     inputQuery: ["input[name='q']"],
     sidebarContainerQuery: ['#side-right'],
-    appendContainerQuery: [],
+    appendContainerQuery: ['main', '#results'],
     contentContainerQuery: [],
     siteName: 'Brave',
     siteValue: 'brave',
     regex: `(^(search.)?brave.com)`,
+    searchResultQuery: ['[data-type="web"]'],
+    searchTitleQuery: ['.search-snippet-title'],
+    searchSnippetQuery: ['.generic-snippet', '.result-content > .content'],
+    searchLinkQuery: ['a.l1', 'a[href]'],
   },
   searx: {
+    isSearchEngine: true,
     inputQuery: ["input[name='q']"],
     sidebarContainerQuery: ['#sidebar_results'],
     appendContainerQuery: [],
@@ -123,6 +176,10 @@ export const config: Record<string, SearchEngine> = {
     siteName: 'searX',
     siteValue: 'searx',
     regex: '(^(www.)?searx.be)',
+    searchResultQuery: ['article.result'],
+    searchTitleQuery: ['h3 a'],
+    searchSnippetQuery: ['.content'],
+    searchLinkQuery: ['h3 a'],
   },
   youtube: {
     inputQuery: ["input[name='q']"],

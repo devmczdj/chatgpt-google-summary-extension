@@ -61,4 +61,12 @@ void Run()
 
 if (siteConfig?.watchRouteChange) {
   siteConfig.watchRouteChange(() => void Run())
+} else if (siteConfig?.isSearchEngine) {
+  let currentPageKey = getBiliPageKey(window.location.href)
+  window.setInterval(() => {
+    const nextPageKey = getBiliPageKey(window.location.href)
+    if (nextPageKey === currentPageKey) return
+    currentPageKey = nextPageKey
+    void Run()
+  }, 800)
 }

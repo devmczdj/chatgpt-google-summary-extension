@@ -17,6 +17,7 @@ import {
 import { getBiliTranscript, getBiliVideoId } from '@/utils/bilibili'
 import { queryParam } from 'gb-url'
 import { siteConfig as sietConfigFn, siteName as siteNameFn } from '@/content-script/utils'
+import { extractSearchPage, formatSearchResults } from '@/content-script/search-results'
 
 export default async function getQuestion() {
   const siteConfig = sietConfigFn()
@@ -308,136 +309,21 @@ export default async function getQuestion() {
     }
   }
 
-  // bing
-  if (siteName === 'bing') {
-    const searchInput = getPossibleElementByQuerySelector<HTMLInputElement>(siteConfig.inputQuery)
-    if (!searchInput) return null
-    const searchValueWithLanguageOption =
-      userConfig.language === Language.Auto
-        ? searchInput.value
-        : `${searchInput.value}(in ${userConfig.language})`
+  if (!siteConfig.isSearchEngine) return null
 
-    let searchList = ''
+  const searchPage = await extractSearchPage(siteConfig)
+  if (!searchPage || searchPage.results.length === 0) return null
 
-    //  Result list
-    const listElms = document.querySelectorAll('main > ol > li.b_algo')
-    const resultList =
-      listElms.length > 0 ? listElms : document.querySelectorAll('ol#b_results > li.b_algo')
+  const Instructions = userConfig.promptSearch
+    ? `${userConfig.promptSearch}`
+    : searchPromptHighlight
+  const searchList = formatSearchResults(searchPage.results)
+  const queryText = searchPrompt({
+    query: searchPage.query,
+    results: getSummaryPrompt(searchList, providerConfigs.provider),
+    language: userConfig.language === Language.Auto ? language : userConfig.language,
+    prompt: Instructions,
+  })
 
-    if (resultList.length > 0) {
-      for (let i = 0; i < resultList.length; i++) {
-        const v = resultList[i]
-        const text =
-          v.querySelector('.b_lineclamp2')?.textContent ||
-          v.querySelector('.b_lineclamp3')?.textContent
-        const index = i + 1
-
-        const link = (v.querySelector('a.sh_favicon') ||
-          v.querySelector('h2.b_topTitle > a') ||
-          v.querySelector('.b_title  a') ||
-          v.querySelector('h2  a')) as HTMLLinkElement
-
-        let url = link?.href
-
-        if (text && url && index <= 6) {
-          url = url.replace(/https?:/, '')
-          searchList =
-            searchList +
-            `
-  [${index}] ${text}\r\n
-  [${index}] URL: ${url}\r\n`
-        } else {
-          break
-        }
-      }
-    }
-
-    const Instructions = userConfig.promptSearch
-      ? `${userConfig.promptSearch}`
-      : searchPromptHighlight
-
-    const queryText = searchPrompt({
-      query: searchInput.value,
-      results: getSummaryPrompt(searchList, providerConfigs.provider),
-      language: userConfig.language === Language.Auto ? language : userConfig.language,
-      prompt: Instructions,
-    })
-
-    return {
-      question: searchList ? queryText : searchValueWithLanguageOption,
-    }
-  }
-
-  // Google
-  await waitForElm(siteConfig.inputQuery[0])
-  const searchInput = getPossibleElementByQuerySelector<HTMLInputElement>(siteConfig.inputQuery)
-
-  if (searchInput && searchInput.value) {
-    const searchValueWithLanguageOption =
-      userConfig.language === Language.Auto
-        ? searchInput.value
-        : `${searchInput.value}(in ${userConfig.language})`
-
-    let searchList = ''
-
-    //  Result list
-    const resultList = document.querySelectorAll('div.MjjYud')
-    if (resultList.length > 0) {
-      resultList.forEach((v, i) => {
-        let url = ''
-        let text = ''
-        const index = i + 1
-        let titleWrap: Element | null = null
-        let title: Element | null = null
-
-        if (v.contains(v.querySelector('block-component'))) {
-          // featured snippets
-          titleWrap = v.querySelector('div.yuRUbf')
-          title = titleWrap?.querySelector('h3.LC20lb') || null
-          url = titleWrap?.querySelector('a')?.href || ''
-          text = v.querySelector('span.ILfuVd')?.textContent || ''
-        } else if (v.contains(v.querySelector('video-voyager'))) {
-          // video
-          titleWrap = v.querySelector('div.ct3b9e')
-          title = titleWrap?.querySelector('h3.LC20lb') || null
-          // url = titleWrap?.querySelector('a')?.href || ''
-          // text = v.querySelector('div.Uroaid')?.textContent || ''
-          url = ''
-          text = ''
-        } else {
-          // link
-          titleWrap = v.querySelector('div.yuRUbf')
-          title = titleWrap?.querySelector('h3.LC20lb') || null
-          url = titleWrap?.querySelector('a')?.href || ''
-          text = v.querySelector('div.VwiC3b')?.textContent || ''
-          const moreText = v.querySelector('div.IThcWe')?.textContent || ''
-          text = text + moreText
-        }
-
-        if (text && url && index <= 6) {
-          url = url.replace(/https?:/, '')
-          searchList =
-            searchList +
-            `
-[${index}] ${text}\r\n
-[${index}]URL: ${url}\r\n\r\n`
-        }
-      })
-    }
-
-    const Instructions = userConfig.promptSearch
-      ? `${userConfig.promptSearch}`
-      : searchPromptHighlight
-
-    const queryText = searchPrompt({
-      query: searchInput.value,
-      results: getSummaryPrompt(searchList, providerConfigs.provider),
-      language: userConfig.language === Language.Auto ? language : userConfig.language,
-      prompt: Instructions,
-    })
-
-    return {
-      question: searchList ? queryText : searchValueWithLanguageOption,
-    }
-  }
+  return { question: queryText }
 }

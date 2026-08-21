@@ -183,10 +183,20 @@ export default async function mount(props: MountProps) {
             appendContainer.appendChild(container)
           }
         } else {
-          container.classList.add('sidebar--free')
-          const appendContainer = getPossibleElementByQuerySelector(siteConfig.appendContainerQuery)
+          const appendContainer = getPossibleElementByQuerySelector([
+            ...siteConfig.appendContainerQuery,
+            ...(siteConfig.isSearchEngine
+              ? ['main', '#content_left', '#links', '#results', '#b_content', '#container']
+              : []),
+          ])
           if (appendContainer) {
-            appendContainer.appendChild(container)
+            if (siteConfig.isSearchEngine) {
+              container.classList.add('glarity--search-inline')
+              appendContainer.prepend(container)
+            } else {
+              container.classList.add('sidebar--free')
+              appendContainer.appendChild(container)
+            }
           }
         }
       }

@@ -125,6 +125,14 @@
   }
 }
 
+.glarity--container.glarity--search-inline {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 16px;
+}
+
 .glarity--generation-action {
   display: inline-flex;
   align-items: center;
@@ -300,6 +308,12 @@
 }
 
 .glarity--header__stop {
+  flex: 0 0 auto;
+  height: 26px;
+  margin-right: 2px;
+}
+
+.glarity--card__stop {
   flex: 0 0 auto;
   height: 26px;
   margin-right: 2px;
