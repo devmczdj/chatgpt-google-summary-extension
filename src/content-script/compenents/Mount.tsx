@@ -77,6 +77,23 @@ async function getSearchSidebar(siteName: string, selectors: string[]): Promise<
     return sidebar
   }
 
+  // Bing can omit #b_context on result pages without an answer card. Restore
+  // a dedicated right rail rather than falling back to the bottom of #b_content.
+  if (siteName === 'bing') {
+    const resultContainer =
+      document.querySelector('#b_content') ||
+      (await waitForPossibleElement(['#b_content'], 1800))
+    if (!resultContainer) return undefined
+
+    resultContainer.classList.add('glarity--has-created-bing-sidebar')
+    const sidebar = document.createElement('ol')
+    sidebar.id = 'b_context'
+    sidebar.className = 'glarity--created-bing-sidebar'
+    sidebar.dataset.glarityCreatedSidebar = 'true'
+    resultContainer.appendChild(sidebar)
+    return sidebar
+  }
+
   // Brave also omits its aside for searches without an answer card. Add a
   // second column to the existing results grid instead of placing the summary
   // above the result list.
@@ -259,6 +276,15 @@ export default async function mount(props: MountProps) {
               : undefined
           if (braveMainSidebar) {
             siderbarContainer.insertBefore(container, braveMainSidebar)
+          } else if (siteName === 'baidu' || siteName === 'bing') {
+            const glarityCard = siderbarContainer.querySelector(
+              ':scope > #glarity--custom__summary',
+            )
+            if (glarityCard) {
+              glarityCard.insertAdjacentElement('afterend', container)
+            } else {
+              siderbarContainer.prepend(container)
+            }
           } else {
             siderbarContainer.appendChild(container)
           }

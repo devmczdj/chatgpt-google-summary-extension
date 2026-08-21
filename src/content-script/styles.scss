@@ -160,6 +160,35 @@
   min-width: 0;
 }
 
+@media screen and (min-width: 1100px) {
+  #b_content.glarity--has-created-bing-sidebar {
+    position: relative;
+
+    .b_widemop_layout {
+      width: 672px !important;
+      max-width: 672px;
+    }
+
+    #b_results {
+      width: 100% !important;
+      max-width: 100%;
+    }
+  }
+
+  #b_context.glarity--created-bing-sidebar {
+    position: absolute;
+    top: 24px;
+    right: 48px;
+    display: block;
+    box-sizing: border-box;
+    width: 360px;
+    min-width: 360px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
 .glarity--generation-action {
   display: inline-flex;
   align-items: center;
