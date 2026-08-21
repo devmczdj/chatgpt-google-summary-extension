@@ -11,9 +11,7 @@
 
   .glarity--header,
   .glarity--main__header a,
-  a.glarity--header__logo,
-  span.glarity--header__logo,
-  button.glarity--header__logo {
+  .glarity--header__identity {
     color: #fff;
 
     &:visited {

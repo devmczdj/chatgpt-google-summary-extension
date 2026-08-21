@@ -5,7 +5,6 @@ import { Loading } from '@geist-ui/core'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import Browser from 'webextension-polyfill'
-import { CheckIcon, CopyIcon } from '@primer/octicons-react'
 import { Answer } from '@/messaging'
 import { isBraveBrowser } from '@/content-script/utils'
 import { BASE_URL } from '@/config'
@@ -18,6 +17,7 @@ export type QueryStatus = 'success' | 'error' | 'done' | undefined
 interface Props {
   question: string
   onStatusChange?: (status: QueryStatus) => void
+  onAnswerChange?: (answer: string) => void
   currentTime?: number
 }
 
@@ -43,7 +43,7 @@ const markdownComponents = {
 }
 
 function ChatGPTQuery(props: Props) {
-  const { onStatusChange, currentTime, question } = props
+  const { onStatusChange, onAnswerChange, currentTime, question } = props
 
   const [answer, setAnswer] = useState<Answer | null>(null)
   const [completedTurns, setCompletedTurns] = useState<CompletedTurn[]>([])
@@ -52,7 +52,6 @@ function ChatGPTQuery(props: Props) {
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
   const [stopped, setStopped] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [status, setStatus] = useState<QueryStatus>()
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const portRef = useRef<Browser.Runtime.Port | null>(null)
@@ -83,6 +82,12 @@ function ChatGPTQuery(props: Props) {
 
       const port = Browser.runtime.connect()
       portRef.current = port
+      port.onDisconnect.addListener(() => {
+        void (Browser.runtime as any).lastError
+        if (portRef.current === port) {
+          portRef.current = null
+        }
+      })
       port.onMessage.addListener((msg: any) => {
         if (msg.text) {
           const text = String(msg.text).replace(/^(\s|:\n\n)+|(:)+|(:\s)$/g, '')
@@ -109,14 +114,6 @@ function ChatGPTQuery(props: Props) {
     setStopped(true)
     setStatus('done')
   }, [disconnect])
-
-  const copyAnswer = useCallback(async () => {
-    if (!answer) {
-      return
-    }
-    await navigator.clipboard.writeText(answer.text)
-    setCopied(true)
-  }, [answer])
 
   const submitFollowUp = useCallback(
     (event: Event) => {
@@ -164,6 +161,10 @@ function ChatGPTQuery(props: Props) {
   }, [onStatusChange, status])
 
   useEffect(() => {
+    onAnswerChange?.(answer?.text || '')
+  }, [answer, onAnswerChange])
+
+  useEffect(() => {
     disconnect()
     setCompletedTurns([])
     setCurrentQuestion(undefined)
@@ -194,12 +195,9 @@ function ChatGPTQuery(props: Props) {
   }, [error, retryCurrentRequest])
 
   useEffect(() => {
-    if (!copied) {
-      return
-    }
-    const timer = setTimeout(() => setCopied(false), 800)
-    return () => clearTimeout(timer)
-  }, [copied])
+    window.addEventListener('pagehide', disconnect)
+    return () => window.removeEventListener('pagehide', disconnect)
+  }, [disconnect])
 
   useEffect(() => {
     if (answer) {
@@ -217,18 +215,7 @@ function ChatGPTQuery(props: Props) {
             <button className="glarity--generation-action" onClick={stopGeneration}>
               <span className="glarity--stop-symbol" /> Stop
             </button>
-          ) : (
-            answer && (
-              <button
-                className="glarity--generation-action glarity--generation-action--icon"
-                onClick={copyAnswer}
-                title="Copy latest answer"
-                aria-label="Copy latest answer"
-              >
-                {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-              </button>
-            )
-          )}
+          ) : null}
         </div>
 
         <div className="glarity--chatgpt--content" ref={wrapRef}>

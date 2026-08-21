@@ -9,11 +9,12 @@ import {
   siteName as siteNameFn,
   hostname,
 } from '@/content-script/utils'
+import type { CaptionTrackOption, TranscriptItem } from '@/content-script/youtube-transcript'
 
 interface MountProps {
   question: string | null
-  transcript?: unknown
-  langOptionsWithLink?: unknown
+  transcript?: TranscriptItem[]
+  langOptionsWithLink?: CaptionTrackOption[]
 }
 
 export default async function mount(props: MountProps) {
@@ -31,7 +32,7 @@ export default async function mount(props: MountProps) {
   })
 
   const enableSites = userConfig.enableSites ? userConfig.enableSites : sites
-  const regexList = []
+  const regexList: string[] = []
   Object.values(enableSites).map((v) => {
     const item = config[v]
 

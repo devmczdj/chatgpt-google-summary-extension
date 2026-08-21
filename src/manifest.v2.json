@@ -10,34 +10,26 @@
     "48": "logo-48.png",
     "128": "logo-128.png"
   },
-  "permissions": [
-    "storage",
-    "<all_urls>",
-    "activeTab",
-    "tabs"
-  ],
+  "permissions": ["storage", "<all_urls>", "activeTab", "tabs"],
   "background": {
-    "scripts": [
-      "background.js"
-    ]
+    "scripts": ["background.js"]
   },
   "browser_action": {},
+  "commands": {
+    "open-page-summary": {
+      "description": "Open the page summary"
+    }
+  },
+  "web_accessible_resources": ["bilibili-page-bridge.js"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>",
-        "*://*/*"
-      ],
-      "js": [
-        "content-script.js"
-      ],
-      "css": [
-        "content-script.css"
-      ]
+      "matches": ["<all_urls>", "*://*/*"],
+      "js": ["content-script.js"],
+      "css": ["content-script.css"]
     }
   ]
 }

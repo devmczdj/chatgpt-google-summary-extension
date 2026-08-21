@@ -1,31 +1,99 @@
-import { useState, useCallback, useEffect } from 'preact/hooks'
+import { useState, useCallback, useEffect, useRef } from 'preact/hooks'
 import classNames from 'classnames'
-import { XCircleFillIcon, GearIcon } from '@primer/octicons-react'
+import {
+  XIcon,
+  GearIcon,
+  SyncIcon,
+  CopyIcon,
+  CheckIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+} from '@primer/octicons-react'
 import Browser from 'webextension-polyfill'
 import ChatGPTQuery from '@/content-script/compenents/ChatGPTQuery'
 // import { extractFromHtml } from '@/utils/article-extractor/cjs/article-extractor.esm'
 import { getUserConfig, Language, getProviderConfigs, APP_TITLE } from '@/config'
 import { getSummaryPrompt } from '@/content-script/prompt'
-import { isIOS } from '@/utils/utils'
 import { getPageSummaryContntent, getPageSummaryComments } from '@/content-script/utils'
 import { commentSummaryPrompt, pageSummaryPrompt, pageSummaryPromptHighlight } from '@/utils/prompt'
-import logoWhite from '@/assets/img/logo-white.png'
 import logo from '@/assets/img/logo.png'
 
-interface Props {
-  pageSummaryEnable: boolean
-  pageSummaryWhitelist: string
-  pageSummaryBlacklist: string
-  siteRegex: RegExp
-}
-
-function PageSummary(props: Props) {
-  const { pageSummaryEnable, pageSummaryWhitelist, pageSummaryBlacklist, siteRegex } = props
+function PageSummary() {
   const [showCard, setShowCard] = useState(false)
   const [supportSummary, setSupportSummary] = useState(true)
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
-  const [show, setShow] = useState<boolean>(false)
+  const [latestAnswer, setLatestAnswer] = useState('')
+  const [answerCopied, setAnswerCopied] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+  const [cardOffset, setCardOffset] = useState({ x: 0, y: 0 })
+  const dragState = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    offsetX: number
+    offsetY: number
+    cardLeft: number
+    cardTop: number
+    cardWidth: number
+    cardHeight: number
+  } | null>(null)
+
+  const onDragStart = useCallback(
+    (event: PointerEvent) => {
+      if (event.button !== 0 || (event.target as HTMLElement).closest('button, a, input')) {
+        return
+      }
+
+      const card = (event.currentTarget as HTMLElement).closest('.glarity--card')
+      if (!card) return
+
+      const rect = card.getBoundingClientRect()
+      dragState.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        offsetX: cardOffset.x,
+        offsetY: cardOffset.y,
+        cardLeft: rect.left - cardOffset.x,
+        cardTop: rect.top - cardOffset.y,
+        cardWidth: rect.width,
+        cardHeight: rect.height,
+      }
+      ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+      document.body.classList.add('glarity--dragging')
+      event.preventDefault()
+    },
+    [cardOffset],
+  )
+
+  const onDrag = useCallback((event: PointerEvent) => {
+    const drag = dragState.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const edge = 8
+    const nextX = drag.offsetX + event.clientX - drag.startX
+    const nextY = drag.offsetY + event.clientY - drag.startY
+    const minX = edge - drag.cardLeft
+    const maxX = window.innerWidth - edge - drag.cardLeft - drag.cardWidth
+    const minY = edge - drag.cardTop
+    const maxY = window.innerHeight - edge - drag.cardTop - drag.cardHeight
+
+    setCardOffset({
+      x: Math.min(Math.max(nextX, minX), Math.max(minX, maxX)),
+      y: Math.min(Math.max(nextY, minY), Math.max(minY, maxY)),
+    })
+  }, [])
+
+  const onDragEnd = useCallback((event: PointerEvent) => {
+    if (dragState.current?.pointerId !== event.pointerId) return
+    dragState.current = null
+    document.body.classList.remove('glarity--dragging')
+  }, [])
+
+  useEffect(() => {
+    return () => document.body.classList.remove('glarity--dragging')
+  }, [])
 
   const onSwitch = useCallback(() => {
     setShowCard((state) => {
@@ -34,6 +102,8 @@ function PageSummary(props: Props) {
       if (cardState) {
         setQuestion('')
         setLoading(false)
+        setLatestAnswer('')
+        setCollapsed(false)
       }
 
       return cardState
@@ -49,6 +119,7 @@ function PageSummary(props: Props) {
     setSupportSummary(true)
 
     setQuestion('')
+    setLatestAnswer('')
 
     const pageComments = await getPageSummaryComments()
     const pageContent = await getPageSummaryContntent()
@@ -94,8 +165,20 @@ function PageSummary(props: Props) {
     setSupportSummary(false)
   }, [])
 
+  const copyLatestAnswer = useCallback(async () => {
+    if (!latestAnswer) return
+    await navigator.clipboard.writeText(latestAnswer)
+    setAnswerCopied(true)
+  }, [latestAnswer])
+
   useEffect(() => {
-    Browser.runtime.onMessage.addListener((message) => {
+    if (!answerCopied) return
+    const timer = setTimeout(() => setAnswerCopied(false), 800)
+    return () => clearTimeout(timer)
+  }, [answerCopied])
+
+  useEffect(() => {
+    const handleMessage = (message) => {
       const { type } = message
       if (type === 'OPEN_WEB_SUMMARY') {
         if (showCard) {
@@ -106,96 +189,122 @@ function PageSummary(props: Props) {
         setShowCard(true)
         setLoading(false)
       }
-    })
+    }
+
+    Browser.runtime.onMessage.addListener(handleMessage)
+    return () => Browser.runtime.onMessage.removeListener(handleMessage)
   }, [showCard])
 
-  useEffect(() => {
-    const hostname = location.hostname
-    const blacklist = pageSummaryBlacklist.replace(/[\s\r\n]+/g, '')
-    const whitelist = pageSummaryWhitelist.replace(/[\s\r\n]+/g, '')
+  return showCard ? (
+    <div
+      className="glarity--card"
+      style={{ transform: `translate3d(${cardOffset.x}px, ${cardOffset.y}px, 0)` }}
+    >
+      <div
+        className="glarity--card__head glarity--card__drag-handle"
+        onPointerDown={onDragStart}
+        onPointerMove={onDrag}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
+      >
+        <div className="glarity--card__head--title" title={APP_TITLE}>
+          <img src={logo} alt="" />
+          <span>{APP_TITLE}</span>
+        </div>
 
-    const inWhitelist = !whitelist
-      ? !blacklist.includes(hostname)
-      : !blacklist.includes(hostname) && pageSummaryWhitelist.includes(hostname)
+        <div className="glarity--card__head--action">
+          <button
+            type="button"
+            className="glarity--card__head-button"
+            onClick={openOptionsPage}
+            title="Open settings"
+            aria-label="Open settings"
+          >
+            <GearIcon size={16} />
+          </button>
 
-    const show =
-      pageSummaryEnable && ((isIOS && inWhitelist) || (inWhitelist && !siteRegex?.test(hostname)))
+          {question && (
+            <button
+              type="button"
+              className="glarity--card__head-button"
+              onClick={onSummary}
+              title="Regenerate"
+              aria-label="Regenerate summary"
+              disabled={loading}
+            >
+              <SyncIcon size={16} />
+            </button>
+          )}
 
-    setShow(show)
-  }, [pageSummaryBlacklist, pageSummaryEnable, pageSummaryWhitelist, siteRegex])
+          {latestAnswer && (
+            <button
+              type="button"
+              className="glarity--card__head-button"
+              onClick={copyLatestAnswer}
+              title="Copy"
+              aria-label="Copy latest answer"
+            >
+              {answerCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+            </button>
+          )}
 
-  return (
-    <>
-      {showCard ? (
-        <div className="glarity--card">
-          <div className="glarity--card__head ">
-            <div className="glarity--card__head--title">
-              <span>
-                <img src={logo} alt={APP_TITLE} /> {APP_TITLE}
-              </span>{' '}
-              <button
-                className={classNames('glarity--btn', 'glarity--btn__icon')}
-                onClick={openOptionsPage}
-              >
-                <GearIcon size={14} />
-              </button>
-            </div>
+          <button
+            type="button"
+            className="glarity--card__head-button"
+            onClick={() => setCollapsed((value) => !value)}
+            title={collapsed ? 'Expand' : 'Collapse'}
+            aria-label={collapsed ? 'Expand summary' : 'Collapse summary'}
+          >
+            {collapsed ? <ChevronDownIcon size={16} /> : <ChevronUpIcon size={16} />}
+          </button>
 
-            <div className="glarity--card__head--action">
-              <button
-                className={classNames('glarity--btn', 'glarity--btn__icon')}
-                onClick={onSwitch}
-              >
-                <XCircleFillIcon />
-              </button>
+          <button
+            type="button"
+            className="glarity--card__head-button"
+            onClick={onSwitch}
+            title="Close"
+            aria-label="Close summary"
+          >
+            <XIcon size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="glarity--card__content" hidden={collapsed}>
+        {question ? (
+          <div className="glarity--container">
+            <div className="glarity--chatgpt">
+              <ChatGPTQuery
+                question={question}
+                onAnswerChange={setLatestAnswer}
+                onStatusChange={(status) => {
+                  if (status) setLoading(false)
+                }}
+              />
             </div>
           </div>
-
-          <div className="glarity--card__content">
-            {question ? (
-              <div className="glarity--container">
-                <div className="glarity--chatgpt">
-                  <ChatGPTQuery question={question} />
-                </div>
-              </div>
+        ) : (
+          <div className="glarity--card__empty ">
+            {!supportSummary ? (
+              'Sorry, the summary of this page is not supported.'
             ) : (
-              <div className="glarity--card__empty ">
-                {!supportSummary ? (
-                  'Sorry, the summary of this page is not supported.'
-                ) : (
-                  <button
-                    className={classNames(
-                      'glarity--btn',
-                      'glarity--btn__primary',
-                      // 'glarity--btn__large',
-                      'glarity--btn__block',
-                    )}
-                    onClick={onSummary}
-                    disabled={loading}
-                  >
-                    Summary
-                  </button>
+              <button
+                className={classNames(
+                  'glarity--btn',
+                  'glarity--btn__primary',
+                  'glarity--summary-button',
                 )}
-              </div>
+                onClick={onSummary}
+                disabled={loading}
+              >
+                Summary
+              </button>
             )}
           </div>
-        </div>
-      ) : (
-        show && (
-          <button
-            onClick={onSwitch}
-            className={classNames('glarity--btn', 'glarity--btn__launch', 'glarity--btn__primary')}
-          >
-            <img
-              src={logoWhite}
-              alt={APP_TITLE}
-              className="glarity--w-5 glarity--h-5 glarity--rounded-sm"
-            />
-          </button>
-        )
-      )}
-    </>
-  )
+        )}
+      </div>
+    </div>
+  ) : null
 }
 
 export default PageSummary

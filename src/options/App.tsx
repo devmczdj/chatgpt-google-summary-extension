@@ -1,13 +1,4 @@
-import {
-  CssBaseline,
-  GeistProvider,
-  Radio,
-  Select,
-  Text,
-  Toggle,
-  useToasts,
-  Divider,
-} from '@geist-ui/core'
+import { CssBaseline, GeistProvider, Radio, Select, Text, useToasts } from '@geist-ui/core'
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks'
 import '@/assets/styles/base.scss'
 import {
@@ -17,9 +8,7 @@ import {
   TriggerMode,
   TRIGGER_MODE_TEXT,
   updateUserConfig,
-  DEFAULT_PAGE_SUMMARY_BLACKLIST,
 } from '@/config'
-import { PageSummaryProps } from './components/PageSummary'
 import ProviderSelect from './ProviderSelect'
 import { config as supportSites } from '@/content-script/search-engine-configs'
 import { isIOS } from '@/utils/utils'
@@ -37,20 +26,7 @@ import {
 
 import './styles.scss'
 
-function OptionsPage(
-  props: {
-    theme: Theme
-    onThemeChange: (theme: Theme) => void
-  } & PageSummaryProps,
-) {
-  const {
-    setPageSummaryEnable,
-    pageSummaryEnable,
-    pageSummaryWhitelist,
-    pageSummaryBlacklist,
-    setPageSummaryWhitelist,
-    setPageSummaryBlacklist,
-  } = props
+function OptionsPage(props: { theme: Theme; onThemeChange: (theme: Theme) => void }) {
   const [triggerMode, setTriggerMode] = useState<TriggerMode>(TriggerMode.Always)
   const [language, setLanguage] = useState<Language>(Language.Auto)
   const { setToast } = useToasts()
@@ -218,14 +194,7 @@ function OptionsPage(
         {/* <Divider /> */}
 
         {/* Page Summary */}
-        <PageSummaryComponent
-          pageSummaryEnable={pageSummaryEnable}
-          setPageSummaryEnable={setPageSummaryEnable}
-          pageSummaryWhitelist={pageSummaryWhitelist}
-          pageSummaryBlacklist={pageSummaryBlacklist}
-          setPageSummaryWhitelist={setPageSummaryWhitelist}
-          setPageSummaryBlacklist={setPageSummaryBlacklist}
-        />
+        <PageSummaryComponent />
       </main>
     </div>
   )
@@ -233,9 +202,6 @@ function OptionsPage(
 
 function App() {
   const [theme, setTheme] = useState(Theme.Auto)
-  const [pageSummaryEnable, setPageSummaryEnable] = useState(true)
-  const [pageSummaryWhitelist, setPageSummaryWhitelist] = useState<string>('')
-  const [pageSummaryBlacklist, setPageSummaryBlacklist] = useState<string>('')
 
   const themeType = useMemo(() => {
     if (theme === Theme.Auto) {
@@ -247,27 +213,13 @@ function App() {
   useEffect(() => {
     getUserConfig().then((config) => {
       setTheme(config.theme)
-      setPageSummaryEnable(config.pageSummaryEnable)
-      setPageSummaryWhitelist(config.pageSummaryWhitelist)
-      setPageSummaryBlacklist(
-        config.pageSummaryBlacklist ? config.pageSummaryBlacklist : DEFAULT_PAGE_SUMMARY_BLACKLIST,
-      )
     })
   }, [])
 
   return (
     <GeistProvider themeType={themeType}>
       <CssBaseline />
-      <OptionsPage
-        theme={theme}
-        onThemeChange={setTheme}
-        setPageSummaryEnable={setPageSummaryEnable}
-        pageSummaryEnable={pageSummaryEnable}
-        pageSummaryWhitelist={pageSummaryWhitelist}
-        pageSummaryBlacklist={pageSummaryBlacklist}
-        setPageSummaryWhitelist={setPageSummaryWhitelist}
-        setPageSummaryBlacklist={setPageSummaryBlacklist}
-      />
+      <OptionsPage theme={theme} onThemeChange={setTheme} />
     </GeistProvider>
   )
 }

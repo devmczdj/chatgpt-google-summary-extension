@@ -19,20 +19,33 @@ $font-size-small: 12px;
 
   .glarity--card__head {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    justify-items: center;
-    padding: 10px 12px;
+    gap: 8px;
+    box-sizing: border-box;
+    min-height: 46px;
+    padding: 8px 10px;
     border-bottom: 1px solid #eee;
     font-size: $font-size-large;
 
-    .glarity--card__head--title {
-      display: inline-flex;
-      align-items: center;
-      font-weight: bold;
+    &.glarity--card__drag-handle {
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
 
-      .glarity--btn {
-        margin-left: 4px;
+      &:active {
+        cursor: grabbing;
       }
+    }
+
+    .glarity--card__head--title {
+      display: flex;
+      flex: 1 1 auto;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      font-weight: 600;
+      line-height: 20px;
 
       a {
         display: inline-flex;
@@ -42,10 +55,65 @@ $font-size-small: 12px;
       }
 
       img {
-        margin: 0 4px 0 0;
+        flex: 0 0 auto;
+        margin: 0;
         width: 20px;
         height: 20px;
-        vertical-align: middle;
+        border-radius: 4px;
+      }
+
+      span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .glarity--card__head--action {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .glarity--card__head-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      width: 26px;
+      min-width: 26px;
+      height: 26px;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0.72;
+      transition: background-color 120ms ease, opacity 120ms ease;
+
+      &:hover {
+        background: rgb(127 127 127 / 14%);
+        opacity: 1;
+      }
+
+      &:focus-visible {
+        outline: 2px solid #0969da;
+        outline-offset: 1px;
+        opacity: 1;
+      }
+
+      &:disabled {
+        cursor: default;
+        opacity: 0.4;
+      }
+
+      svg {
+        display: block;
+        width: 16px;
+        height: 16px;
       }
     }
   }
@@ -59,6 +127,10 @@ $font-size-small: 12px;
     overflow-y: auto;
     overflow-wrap: break-word;
     min-height: 110px;
+
+    &[hidden] {
+      display: none !important;
+    }
 
     .glarity--container {
       margin-bottom: 0;
@@ -86,6 +158,11 @@ $font-size-small: 12px;
       margin: -13px 24px 0 auto !important;
     }
   }
+}
+
+body.glarity--dragging {
+  cursor: grabbing !important;
+  user-select: none !important;
 }
 
 // button
@@ -125,27 +202,6 @@ $font-size-small: 12px;
     // }
   }
 
-  &.glarity--btn__launch {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0;
-    width: 24px;
-    height: 24px;
-    text-align: center;
-    vertical-align: middle;
-    border: 1px solid #144a7f;
-    background: #fff;
-
-    img {
-      margin: 0;
-      width: 20px;
-      height: 20px;
-      vertical-align: middle;
-      filter: blur(0);
-    }
-  }
-
   &.glarity--btn__primary {
     color: #fff;
     background: $primary-color;
@@ -164,6 +220,23 @@ $font-size-small: 12px;
   &.glarity--btn__large {
     font-size: $font-size-large;
     padding: 8px 16px;
+  }
+
+  &.glarity--summary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: auto !important;
+    min-width: 152px;
+    min-height: 40px;
+    padding: 10px 28px;
+    border-radius: 8px;
+    font-size: $font-size-normal;
+    font-weight: 600;
+    line-height: 20px;
+    white-space: nowrap;
+    writing-mode: horizontal-tb;
   }
 
   &.glarity--btn__small {

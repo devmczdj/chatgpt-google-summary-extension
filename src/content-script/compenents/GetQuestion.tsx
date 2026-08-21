@@ -290,7 +290,7 @@ export default async function getQuestion() {
     const content = transcript
       ? (
           transcript.map((v) => {
-            return `${v.content}`
+            return `${v.text}`
           }) || []
         ).join('')
       : desc + videoDesc
@@ -306,6 +306,7 @@ export default async function getQuestion() {
 
     return {
       question: content ? queryText : null,
+      transcript: transcript || [],
     }
   }
 

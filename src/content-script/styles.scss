@@ -108,24 +108,20 @@
       }
     }
 
-    .glarity--chatgpt--header {
-      margin-top: -42px !important;
-    }
   }
 
   .glarity--chatgpt--header {
-    margin-top: -42px !important;
+    margin-top: -44px !important;
     margin-left: auto;
-    margin-right: 28px;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
+    margin-right: 30px;
+    margin-bottom: 8px;
+    padding: 0;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     align-items: center;
-    min-height: 20px;
+    min-height: 26px;
     width: fit-content;
-    position: relative;
     z-index: 40;
   }
 }
@@ -151,8 +147,24 @@
   }
 
   &.glarity--generation-action--icon {
-    padding: 3px;
-    border-color: transparent;
+    justify-content: center;
+    padding: 0;
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 6px;
+    opacity: 0.72;
+
+    &:hover {
+      background: rgb(127 127 127 / 14%);
+      opacity: 1;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #0969da;
+      outline-offset: 1px;
+    }
   }
 }
 
@@ -239,54 +251,100 @@
   color: red;
 }
 .glarity--header {
-  // position: relative;
-  // z-index: 10;
   display: flex;
-  padding: 2px 0 10px;
+  gap: 8px;
+  padding: 4px 28px 8px 0;
+  min-height: 26px;
   justify-content: space-between;
   align-items: center;
   font-size: 16px;
   user-select: none;
-  cursor: pointer;
-}
-
-a.glarity--header__logo,
-span.glarity--header__logo,
-button.glarity--header__logo {
-  margin-right: 6px;
-  height: 20px;
-  color: #000;
-  text-decoration: none;
-  line-height: 20px;
-
-  &:visited {
-    color: #000;
-  }
-
-  img {
-    margin-right: 5px;
-    width: 20px;
-    height: 20px;
-    vertical-align: middle;
-  }
-}
-
-span.glarity--header__logo {
   cursor: default;
 }
 
-.glarity--header__button {
+.glarity--header__identity,
+.glarity--header__controls {
+  display: inline-flex;
+  align-items: center;
+}
+
+.glarity--header__identity {
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+  height: 26px;
+  color: inherit;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.glarity--header__identity img {
+  flex: 0 0 auto;
+  margin: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.glarity--header__title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.glarity--header__controls {
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.glarity--header__button,
+.glarity--header__status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0 6px 0 0;
+  box-sizing: border-box;
+  margin: 0;
   padding: 0;
-  min-width: 20px;
-  height: 20px;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  line-height: 1;
+}
+
+.glarity--header__button {
   color: inherit;
   background: transparent;
   border: 0;
+  border-radius: 6px;
   cursor: pointer;
+  opacity: 0.72;
+  transition: background-color 120ms ease, opacity 120ms ease;
+
+  &:hover {
+    background: rgb(127 127 127 / 14%);
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #0969da;
+    outline-offset: 1px;
+    opacity: 1;
+  }
+
+  svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.glarity--header__status {
+  pointer-events: none;
+
+  .glarity--icon--loading {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .glarity--chatgpt__action {
@@ -295,12 +353,7 @@ span.glarity--header__logo {
 }
 
 .glarity--collapse-button {
-  margin-right: 0;
-  opacity: 0.8;
-
-  &:hover {
-    opacity: 1;
-  }
+  margin: 0;
 }
 
 .glarity--main {
@@ -327,7 +380,7 @@ span.glarity--header__logo {
 }
 .glarity--main__header--title {
   font-weight: bold;
-  cursor: pointer;
+  cursor: default;
 }
 
 .glarity--main__header--icon {
@@ -335,10 +388,9 @@ span.glarity--header__logo {
 }
 
 .glarity--main__header--action {
-  a {
-    display: inline-block;
-    margin-left: 5px;
-  }
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .glarity--main__container {
@@ -490,14 +542,48 @@ span.glarity--header__logo {
 
 // Web Summary
 .glarity--summary {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-end;
   position: fixed;
   top: 160px;
   right: 15px;
-  width: auto;
+  width: 360px !important;
+  height: auto !important;
+  max-width: calc(100vw - 16px);
   z-index: 99999999999999;
+  pointer-events: none;
 
   .glarity--card {
-    width: 360px;
+    display: block !important;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+    border: 1px solid #ddd !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 28%), 0 2px 8px rgb(0 0 0 / 18%);
+    opacity: 1 !important;
+    isolation: isolate;
+    overflow: hidden;
+    pointer-events: auto;
+    will-change: transform;
+  }
+
+  .glarity--card__content {
+    display: block !important;
+    box-sizing: border-box;
+    width: 100% !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .glarity--summary .glarity--card {
+    border-color: #4a4f58 !important;
+    background: rgb(35, 36, 40) !important;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 55%), 0 0 0 1px rgb(255 255 255 / 8%);
   }
 }
 

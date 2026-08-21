@@ -21,26 +21,31 @@ import {
 import { queryParam } from 'gb-url'
 import getQuestion from '@/content-script/compenents/GetQuestion'
 import logo from '@/assets/img/logo-48.png'
+import type { CaptionTrackOption, TranscriptItem } from '@/content-script/youtube-transcript'
 
 interface Props {
   question: string | null
-  transcript?: unknown
+  transcript?: TranscriptItem[]
   triggerMode: TriggerMode
   siteConfig: SearchEngine
-  langOptionsWithLink?: unknown
+  langOptionsWithLink?: CaptionTrackOption[]
   currentTime?: number
 }
 
 function ChatGPTContainer(props: Props) {
   const [queryStatus, setQueryStatus] = useState<QueryStatus>()
   const [copied, setCopied] = useState(false)
+  const [answerCopied, setAnswerCopied] = useState(false)
+  const [latestAnswer, setLatestAnswer] = useState('')
   const [transcriptShow, setTranscriptShow] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [selectedOption, setSelectedOption] = useState(0)
   const [loading, setLoading] = useState(false)
   const [theme, setTheme] = useState(Theme.Auto)
   const [questionProps, setQuestionProps] = useState<Props>({ ...props })
-  const [currentTranscript, setCurrentTranscript] = useState(props.transcript)
+  const [currentTranscript, setCurrentTranscript] = useState<TranscriptItem[]>(
+    props.transcript || [],
+  )
 
   const { triggerMode } = props
 
@@ -52,10 +57,10 @@ function ChatGPTContainer(props: Props) {
   }, [theme])
 
   const handleChange = async (event) => {
-    const val = event.target.value || ''
+    const val = Number(event.target.value)
     const videoId = queryParam('v', window.location.href || '')
 
-    if (val < 0 || !videoId) {
+    if (!Number.isInteger(val) || val < 0 || !videoId) {
       return
     }
 
@@ -73,10 +78,17 @@ function ChatGPTContainer(props: Props) {
   }
 
   const copytSubtitle = () => {
-    const videoId = queryParam('v', window.location.href)
-    copyTranscript(videoId, currentTranscript)
+    copyTranscript(currentTranscript)
     setCopied(true)
   }
+
+  const copyLatestAnswer = useCallback(async () => {
+    if (!latestAnswer) {
+      return
+    }
+    await navigator.clipboard.writeText(latestAnswer)
+    setAnswerCopied(true)
+  }, [latestAnswer])
 
   const openOptionsPage = useCallback(() => {
     Browser.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' })
@@ -88,6 +100,7 @@ function ChatGPTContainer(props: Props) {
     }
 
     setLoading(true)
+    setLatestAnswer('')
 
     let questionData = (await getQuestion()) as Props
 
@@ -104,7 +117,7 @@ function ChatGPTContainer(props: Props) {
 
   const onPlay = useCallback(async (starttime = 0) => {
     const videoElm = document.querySelector(
-      '#movie_player > div.html5-video-container > video',
+      '#movie_player > div.html5-video-container > video, #bilibili-player video, video',
     ) as HTMLVideoElement
     if (!videoElm) {
       return
@@ -124,11 +137,16 @@ function ChatGPTContainer(props: Props) {
   }, [copied])
 
   useEffect(() => {
+    if (answerCopied) {
+      const timer = setTimeout(() => setAnswerCopied(false), 800)
+      return () => clearTimeout(timer)
+    }
+  }, [answerCopied])
+
+  useEffect(() => {
     setQuestionProps({ ...props })
 
-    if (props.transcript) {
-      setCurrentTranscript([...props.transcript])
-    }
+    setCurrentTranscript(props.transcript ? [...props.transcript] : [])
   }, [props])
 
   useEffect(() => {
@@ -151,39 +169,49 @@ function ChatGPTContainer(props: Props) {
         <>
           <div className="glarity--chatgpt">
             <div className="glarity--header">
-              <div>
-                <span className="glarity--header__logo">
-                  <img src={logo} alt={APP_TITLE} />
-                  {APP_TITLE}
-                </span>
+              <span className="glarity--header__identity">
+                <img src={logo} alt={APP_TITLE} />
+                <span className="glarity--header__title">{APP_TITLE}</span>
+              </span>
+              <div className="glarity--header__controls glarity--chatgpt__action">
                 <button
                   type="button"
-                  className="glarity--header__logo glarity--header__button"
+                  className="glarity--header__button"
                   onClick={openOptionsPage}
                   title="Open settings"
                   aria-label="Open settings"
                 >
-                  <GearIcon size={14} />
+                  <GearIcon size={16} />
                 </button>
 
                 {loading ? (
-                  <span className="glarity--header__logo">
+                  <span className="glarity--header__status" aria-label="Regenerating">
                     <Spinner className="glarity--icon--loading" />
                   </span>
                 ) : (
                   <button
                     type="button"
-                    className="glarity--header__logo glarity--header__button"
+                    className="glarity--header__button"
                     onClick={onRefresh}
                     title="Regenerate"
                     aria-label="Regenerate"
                   >
-                    <SyncIcon size={14} />
+                    <SyncIcon size={16} />
                   </button>
                 )}
-              </div>
 
-              <div className="glarity--chatgpt__action">
+                {latestAnswer && (
+                  <button
+                    type="button"
+                    className="glarity--header__button"
+                    onClick={copyLatestAnswer}
+                    title="Copy latest answer"
+                    aria-label="Copy latest answer"
+                  >
+                    {answerCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className="glarity--header__button glarity--collapse-button"
@@ -222,6 +250,7 @@ function ChatGPTContainer(props: Props) {
                           question={questionProps.question}
                           triggerMode={questionProps.triggerMode}
                           onStatusChange={setQueryStatus}
+                          onAnswerChange={setLatestAnswer}
                           currentTime={questionProps.currentTime}
                         />
                       </>
@@ -250,12 +279,12 @@ function ChatGPTContainer(props: Props) {
               </div>
             </div>
 
-            {questionProps.question && currentTranscript && (
+            {questionProps.question && currentTranscript.length > 0 && (
               <div className="glarity--main" style={{ display: collapsed ? 'none' : undefined }}>
                 <div className="glarity--main__header">
                   <div className="glarity--main__header--title">
                     Transcript
-                    {questionProps.langOptionsWithLink.length > 1 && (
+                    {(questionProps.langOptionsWithLink?.length || 0) > 1 && (
                       <>
                         {' '}
                         <select
@@ -276,13 +305,25 @@ function ChatGPTContainer(props: Props) {
                     )}
                   </div>
                   <div className="glarity--main__header--action">
-                    <a href="javascript:;" onClick={copytSubtitle}>
-                      {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
-                    </a>
+                    <button
+                      type="button"
+                      className="glarity--header__button"
+                      onClick={copytSubtitle}
+                      title="Copy transcript"
+                      aria-label="Copy transcript"
+                    >
+                      {copied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                    </button>
 
-                    <a href="javascript:;" onClick={switchtranscriptShow}>
+                    <button
+                      type="button"
+                      className="glarity--header__button"
+                      onClick={switchtranscriptShow}
+                      title={transcriptShow ? 'Collapse transcript' : 'Expand transcript'}
+                      aria-label={transcriptShow ? 'Collapse transcript' : 'Expand transcript'}
+                    >
                       {transcriptShow ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
-                    </a>
+                    </button>
                   </div>
                 </div>
 

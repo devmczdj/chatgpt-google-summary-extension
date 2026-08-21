@@ -8,11 +8,13 @@ interface Props {
   question: string
   triggerMode: TriggerMode
   onStatusChange?: (status: QueryStatus) => void
+  onAnswerChange?: (answer: string) => void
   currentTime?: number
 }
 
 function ChatGPTCard(props: Props) {
-  const { triggerMode, question, onStatusChange, currentTime: propCurrentTime } = props
+  const { triggerMode, question, onStatusChange, onAnswerChange, currentTime: propCurrentTime } =
+    props
 
   const [triggered, setTriggered] = useState(false)
 
@@ -22,12 +24,19 @@ function ChatGPTCard(props: Props) {
         currentTime={propCurrentTime}
         question={question}
         onStatusChange={onStatusChange}
+        onAnswerChange={onAnswerChange}
       />
     )
   }
   if (triggerMode === TriggerMode.QuestionMark) {
     if (endsWithQuestionMark(question.trim())) {
-      return <ChatGPTQuery question={question} onStatusChange={onStatusChange} />
+      return (
+        <ChatGPTQuery
+          question={question}
+          onStatusChange={onStatusChange}
+          onAnswerChange={onAnswerChange}
+        />
+      )
     }
     return (
       <p className="icon-and-text">
@@ -42,6 +51,7 @@ function ChatGPTCard(props: Props) {
           currentTime={propCurrentTime}
           question={question}
           onStatusChange={onStatusChange}
+          onAnswerChange={onAnswerChange}
         />
       </>
     )

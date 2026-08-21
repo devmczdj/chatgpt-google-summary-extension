@@ -1,77 +1,42 @@
-import React from 'react'
-import { useCallback } from 'preact/hooks'
-import {
-  Text,
-  Textarea,
-  Card,
-  Button,
-  useToasts,
-  Divider,
-  Toggle,
-  Spacer,
-  Description,
-} from '@geist-ui/core'
-import { updateUserConfig } from '@/config'
-import { changeToast } from '@/utils/utils'
+import { Button, Card, Text, useToasts } from '@geist-ui/core'
+import { useCallback, useEffect, useState } from 'preact/hooks'
+import Browser from 'webextension-polyfill'
+import { isFirefox } from '@/utils/utils'
 
-export interface PageSummaryProps {
-  pageSummaryEnable: boolean
-  setPageSummaryEnable: (state: boolean) => void
-  pageSummaryWhitelist: string
-  setPageSummaryWhitelist: (whitelist: string) => void
-  pageSummaryBlacklist: string
-  setPageSummaryBlacklist: (blacklist: string) => void
-}
+const PAGE_SUMMARY_COMMAND = 'open-page-summary'
 
-function PageSummaryComponent(props: PageSummaryProps) {
-  const {
-    pageSummaryEnable,
-    setPageSummaryEnable,
-    pageSummaryWhitelist,
-    pageSummaryBlacklist,
-    setPageSummaryWhitelist,
-    setPageSummaryBlacklist,
-  } = props
+function PageSummaryComponent() {
+  const [shortcut, setShortcut] = useState('Not set')
   const { setToast } = useToasts()
 
-  const onPageSummarySave = useCallback(() => {
-    updateUserConfig({ pageSummaryWhitelist, pageSummaryBlacklist })
-    setPageSummaryWhitelist(pageSummaryWhitelist)
-    setPageSummaryBlacklist(pageSummaryBlacklist)
-    setToast(changeToast)
-  }, [
-    pageSummaryBlacklist,
-    pageSummaryWhitelist,
-    setPageSummaryBlacklist,
-    setPageSummaryWhitelist,
-    setToast,
-  ])
+  const loadShortcut = useCallback(() => {
+    Browser.commands
+      .getAll()
+      .then((commands) => {
+        const command = commands.find(({ name }) => name === PAGE_SUMMARY_COMMAND)
+        setShortcut(command?.shortcut || 'Not set')
+      })
+      .catch(() => setShortcut('Not set'))
+  }, [])
 
-  const onPageSummaryEnableChange = useCallback(
-    (e: React.ChangeEvent) => {
-      const value = e.target.checked
-      setPageSummaryEnable(value)
-      updateUserConfig({ pageSummaryEnable: value })
-      setToast(changeToast)
-    },
-    [setPageSummaryEnable, setToast],
-  )
+  useEffect(() => {
+    loadShortcut()
+    window.addEventListener('focus', loadShortcut)
+    return () => window.removeEventListener('focus', loadShortcut)
+  }, [loadShortcut])
 
-  const onPageSummaryWhitelistChange = useCallback(
-    (e: React.ChangeEvent) => {
-      const value = e.target.value || ''
-      setPageSummaryWhitelist(value)
-    },
-    [setPageSummaryWhitelist],
-  )
+  const openShortcutSettings = useCallback(async () => {
+    const url = isFirefox ? 'about:addons' : 'chrome://extensions/shortcuts'
 
-  const onPageSummaryBlacklistChange = useCallback(
-    (e: React.ChangeEvent) => {
-      const value = e.target.value || ''
-      setPageSummaryBlacklist(value)
-    },
-    [setPageSummaryBlacklist],
-  )
+    try {
+      await Browser.tabs.create({ url })
+    } catch (error) {
+      setToast({
+        text: `Open ${url} in the address bar to configure the shortcut.`,
+        type: 'warning',
+      })
+    }
+  }, [setToast])
 
   return (
     <>
@@ -81,63 +46,20 @@ function PageSummaryComponent(props: PageSummaryProps) {
 
       <Card>
         <Card.Content>
-          <Text
-            h5
-            className="glarity--mb-0 glarity--flex glarity--flex-row glarity--items-center glarity--gap-1"
-          >
-            <Toggle
-              initialChecked
-              checked={pageSummaryEnable}
-              onChange={onPageSummaryEnableChange}
-            />{' '}
-            Show page summary icon
-          </Text>
-          <Text className="glarity--mt-0" font="12px">
-            Once hidden, the summary icon will no longer appear on the page. However, you can open
-            the page summary by clicking on the browser extension icon.
-          </Text>
-        </Card.Content>
-        <Divider />
-        <Card.Content>
           <Text h4 className="glarity--mb-0">
-            Whitelist Sites
+            Open page summary
           </Text>
-          <Text className="glarity--mt-0" font="12px">
-            Only display the summary icon on these sites (one URL per line).
+          <Text className="glarity--mt-1" font="13px">
+            The floating page button is hidden permanently so it cannot cover website content. Open
+            the summary from the browser extension icon or assign your own keyboard shortcut.
           </Text>
-          <Spacer h={0.5} />
-          <Textarea
-            placeholder="https://example.com
-https://reddit.com"
-            resize={'vertical'}
-            value={pageSummaryWhitelist}
-            style={{ width: '400px', height: '100px' }}
-            onChange={onPageSummaryWhitelistChange}
-          />
-        </Card.Content>
-        <Divider />
-        <Card.Content>
-          <Text h4 className="glarity--mb-0">
-            Blacklist Sites
+          <Text className="glarity--mb-3" font="13px">
+            Current shortcut: <code>{shortcut}</code>
           </Text>
-          <Text className="glarity--mt-0" font="12px">
-            Do not display the summary icon on these sites (one URL per line).
-          </Text>
-          <Spacer h={0.5} />
-          <Textarea
-            placeholder="https://example.com
-https://reddit.com"
-            resize={'vertical'}
-            value={pageSummaryBlacklist}
-            style={{ width: '400px', height: '100px' }}
-            onChange={onPageSummaryBlacklistChange}
-          />
-        </Card.Content>
-        <Card.Footer>
-          <Button scale={2 / 3} style={{ width: 20 }} type="success" onClick={onPageSummarySave}>
-            Save
+          <Button auto scale={2 / 3} type="success" onClick={openShortcutSettings}>
+            Configure keyboard shortcut
           </Button>
-        </Card.Footer>
+        </Card.Content>
       </Card>
     </>
   )

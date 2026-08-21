@@ -4,6 +4,10 @@ import { ChatGPTProvider, getChatGPTAccessToken } from './providers/chatgpt'
 import { OpenAIProvider } from './providers/openai'
 import { Provider } from './types'
 import { isFirefox, tabSendMsg } from '@/utils/utils'
+import {
+  fetchBilibiliTranscript,
+  type BilibiliTranscriptRequest,
+} from '@/utils/bilibili-transcript'
 
 interface GenerateRequest {
   question: string
@@ -41,6 +45,9 @@ async function generateAnswers(port: Browser.Runtime.Port, request: GenerateRequ
   let disconnected = false
   let cleanup: (() => void) | undefined
   port.onDisconnect.addListener(() => {
+    // Reading lastError prevents expected lifecycle disconnects (for example
+    // when a page enters the back/forward cache) from becoming unchecked errors.
+    void (Browser.runtime as any).lastError
     disconnected = true
     controller.abort()
     cleanup?.()
@@ -84,9 +91,9 @@ async function createTab(url) {
   if (oldTabId.pinnedTabId) {
     try {
       tab = await Browser.tabs.get(oldTabId.pinnedTabId)
-      Browser.tabs.update(tab.id, { active: true, pinned: true })
+      await Browser.tabs.update(tab.id, { active: true, pinned: true })
     } catch (error) {
-      console.error(error)
+      console.debug('The previously pinned tab is no longer available', error)
     }
   }
   if (!tab) {
@@ -120,6 +127,8 @@ Browser.runtime.onMessage.addListener(async (message) => {
     return getChatGPTAccessToken()
   } else if (message.type === 'NEW_TAB') {
     return createTab(message.data.url)
+  } else if (message.type === 'GET_BILIBILI_TRANSCRIPT') {
+    return fetchBilibiliTranscript((message.data || {}) as BilibiliTranscriptRequest)
   } else if (message.type === 'GO_BACK') {
     const tab = await Browser.storage.local.get('glarityTabId')
 
@@ -139,35 +148,26 @@ Browser.runtime.onInstalled.addListener(async (details) => {
   }
 })
 
-Browser.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+Browser.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
   const oldTabId = await Browser.storage.local.get('pinnedTabId')
 
-  Browser.tabs.get(tabId).then((tab) => {
-    console.log('tabId', tabId, tab, changeInfo)
+  if (
+    tab.url?.includes(BASE_URL) &&
+    changeInfo.status === 'complete' &&
+    tab.id &&
+    oldTabId.pinnedTabId === tab.id
+  ) {
+    tabSendMsg(tab)
+  }
+})
 
-    // Browser.tabs.query({}).then((tabs) => {
-    //   tabs.forEach((tab) => {
-    //     if (
-    //       changeInfo.status === 'complete' &&
-    //       tab.id &&
-    //       tab.id &&
-    //       oldTabId.pinnedTabId === tab.id
-    //     ) {
-    //       Browser.runtime.sendMessage(tab.id, { type: 'CHATGPT_TAB_CURRENT_' }).catch(() => {})
-    //     }
-    //   })
-    // })
+Browser.tabs.onRemoved.addListener(async (tabId) => {
+  const storedTabs = await Browser.storage.local.get(['pinnedTabId', 'glarityTabId'])
+  const staleKeys = ['pinnedTabId', 'glarityTabId'].filter((key) => storedTabs[key] === tabId)
 
-    if (
-      tab.url?.includes(BASE_URL) &&
-      changeInfo.status === 'complete' &&
-      tab.id &&
-      oldTabId.pinnedTabId === tab.id
-    ) {
-      console.log('onUpdated', oldTabId, tab)
-      tabSendMsg(tab)
-    }
-  })
+  if (staleKeys.length > 0) {
+    await Browser.storage.local.remove(staleKeys)
+  }
 })
 
 async function openPageSummary(tab) {
@@ -179,6 +179,17 @@ async function openPageSummary(tab) {
 
   Browser.tabs.sendMessage(id, { type: 'OPEN_WEB_SUMMARY', data: {} }).catch(() => {})
 }
+
+Browser.commands.onCommand.addListener(async (command) => {
+  if (command !== 'open-page-summary') {
+    return
+  }
+
+  const [tab] = await Browser.tabs.query({ active: true, currentWindow: true })
+  if (tab) {
+    await openPageSummary(tab)
+  }
+})
 
 if (isFirefox) {
   Browser.browserAction.onClicked.addListener(async (tab) => {
