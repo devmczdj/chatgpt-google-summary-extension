@@ -69,8 +69,13 @@ export const config: Record<string, SearchEngine> = {
   duckduckgo: {
     isSearchEngine: true,
     inputQuery: ["input[name='q']"],
-    sidebarContainerQuery: ['.results--sidebar.js-results-sidebar'],
-    appendContainerQuery: ['main', '[data-testid="mainline"]', '#links_wrapper'],
+    sidebarContainerQuery: [
+      'section[data-area="sidebar"]',
+      'section[data-testid="sidebar"]',
+      '.js-react-sidebar',
+      '.results--sidebar.js-results-sidebar',
+    ],
+    appendContainerQuery: [],
     contentContainerQuery: [],
     siteName: 'DuckDuckGo',
     siteValue: 'duckduckgo',
@@ -156,8 +161,12 @@ export const config: Record<string, SearchEngine> = {
   brave: {
     isSearchEngine: true,
     inputQuery: ["input[name='q']"],
-    sidebarContainerQuery: ['#side-right'],
-    appendContainerQuery: ['main', '#results'],
+    sidebarContainerQuery: [
+      '.serp-layout > .serp-columns > .serp-columns-side',
+      'aside.sidebar',
+      '#side-right',
+    ],
+    appendContainerQuery: [],
     contentContainerQuery: [],
     siteName: 'Brave',
     siteValue: 'brave',

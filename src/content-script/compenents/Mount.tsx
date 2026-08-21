@@ -20,6 +20,83 @@ interface MountProps {
   pageKey?: string
 }
 
+function waitForPossibleElement(selectors: string[], timeoutMs = 2400): Promise<Element | undefined> {
+  const existing = getPossibleElementByQuerySelector(selectors)
+  if (existing) return Promise.resolve(existing)
+
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (element?: Element) => {
+      if (settled) return
+      settled = true
+      observer.disconnect()
+      window.clearTimeout(timeout)
+      resolve(element)
+    }
+    const observer = new MutationObserver(() => {
+      const element = getPossibleElementByQuerySelector(selectors)
+      if (element) finish(element)
+    })
+    const timeout = window.setTimeout(() => finish(), timeoutMs)
+
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
+}
+
+async function getSearchSidebar(siteName: string, selectors: string[]): Promise<Element | undefined> {
+  // Brave replaces its Svelte sidebar shortly after the results first appear.
+  // Waiting for that final render prevents it from deleting injected content.
+  if (siteName === 'brave') {
+    await new Promise((resolve) => window.setTimeout(resolve, 1700))
+  }
+
+  const existing = getPossibleElementByQuerySelector(selectors)
+  if (existing) {
+    if (siteName === 'google') {
+      existing.classList.add('TQc1id', 'hSOk2e', 'rhstc4', 'glarity--managed-search-sidebar')
+    } else if (siteName === 'brave') {
+      existing.classList.add('glarity--managed-search-sidebar')
+      existing.closest('.serp-columns')?.classList.add('glarity--has-created-sidebar')
+    }
+    return existing
+  }
+
+  // Google omits #rhs completely when the result page has no knowledge panel.
+  // Recreate the same standard rail Google uses instead of inserting into the
+  // result column. This mirrors the approach used by mature sidebar injectors.
+  if (siteName === 'google') {
+    const resultContainer =
+      document.querySelector('#rcnt') || (await waitForPossibleElement(['#rcnt'], 1800))
+    if (!resultContainer) return undefined
+
+    const sidebar = document.createElement('div')
+    sidebar.id = 'rhs'
+    sidebar.className = 'TQc1id hSOk2e rhstc4 glarity--managed-search-sidebar'
+    sidebar.dataset.glarityCreatedSidebar = 'true'
+    resultContainer.appendChild(sidebar)
+    return sidebar
+  }
+
+  // Brave also omits its aside for searches without an answer card. Add a
+  // second column to the existing results grid instead of placing the summary
+  // above the result list.
+  if (siteName === 'brave') {
+    const resultsGrid =
+      document.querySelector('.serp-layout > .serp-columns') ||
+      (await waitForPossibleElement(['.serp-layout > .serp-columns'], 2400))
+    if (!resultsGrid) return undefined
+
+    resultsGrid.classList.add('glarity--has-created-sidebar')
+    const sidebar = document.createElement('aside')
+    sidebar.className = 'sidebar glarity--created-search-sidebar'
+    sidebar.dataset.glarityCreatedSidebar = 'true'
+    resultsGrid.appendChild(sidebar)
+    return sidebar
+  }
+
+  return waitForPossibleElement(selectors)
+}
+
 export default async function mount(props: MountProps) {
   const siteConfig = sietConfigFn()
   const siteName = siteNameFn()
@@ -165,10 +242,29 @@ export default async function mount(props: MountProps) {
         container.classList.add('glarity--chatgpt--bing')
       }
 
-      const siderbarContainer = getPossibleElementByQuerySelector(siteConfig.sidebarContainerQuery)
+      const siderbarContainer = siteConfig.isSearchEngine
+        ? await getSearchSidebar(siteName, siteConfig.sidebarContainerQuery)
+        : getPossibleElementByQuerySelector(siteConfig.sidebarContainerQuery)
 
       if (siderbarContainer) {
-        siderbarContainer.prepend(container)
+        if (siteConfig.isSearchEngine) {
+          container.classList.add(
+            'glarity--search-sidebar-item',
+            `glarity--search-sidebar-item--${siteName}`,
+          )
+          // Keep existing search-engine cards (including Glarity) above ours.
+          const braveMainSidebar =
+            siteName === 'brave'
+              ? siderbarContainer.querySelector(':scope > #mixed-side')
+              : undefined
+          if (braveMainSidebar) {
+            siderbarContainer.insertBefore(container, braveMainSidebar)
+          } else {
+            siderbarContainer.appendChild(container)
+          }
+        } else {
+          siderbarContainer.prepend(container)
+        }
       } else {
         if (
           siteConfig.extabarContainerQuery &&
@@ -180,23 +276,12 @@ export default async function mount(props: MountProps) {
           )
           if (appendContainer) {
             appendContainer.appendChild(container)
-            appendContainer.appendChild(container)
           }
         } else {
-          const appendContainer = getPossibleElementByQuerySelector([
-            ...siteConfig.appendContainerQuery,
-            ...(siteConfig.isSearchEngine
-              ? ['main', '#content_left', '#links', '#results', '#b_content', '#container']
-              : []),
-          ])
+          const appendContainer = getPossibleElementByQuerySelector(siteConfig.appendContainerQuery)
           if (appendContainer) {
-            if (siteConfig.isSearchEngine) {
-              container.classList.add('glarity--search-inline')
-              appendContainer.prepend(container)
-            } else {
-              container.classList.add('sidebar--free')
-              appendContainer.appendChild(container)
-            }
+            container.classList.add('sidebar--free')
+            appendContainer.appendChild(container)
           }
         }
       }

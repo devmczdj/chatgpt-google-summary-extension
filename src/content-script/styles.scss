@@ -125,12 +125,39 @@
   }
 }
 
-.glarity--container.glarity--search-inline {
+.glarity--container.glarity--search-sidebar-item {
   flex: 0 0 auto;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  margin: 0 0 16px;
+  margin: 16px 0 0;
+}
+
+#rhs.glarity--managed-search-sidebar {
+  min-width: 360px;
+}
+
+.glarity--container.glarity--search-sidebar-item--google {
+  min-width: 360px;
+}
+
+.serp-columns.glarity--has-created-sidebar {
+  grid-template-columns: minmax(0, 672px) minmax(320px, 1fr) !important;
+  column-gap: 32px;
+}
+
+.glarity--created-search-sidebar {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.serp-columns-side.glarity--managed-search-sidebar {
+  display: block !important;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 
 .glarity--generation-action {

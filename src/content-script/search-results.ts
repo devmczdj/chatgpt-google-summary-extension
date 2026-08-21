@@ -185,7 +185,7 @@ export function extractSearchResults(siteConfig: SearchEngine, maxResults = 6): 
 
 function waitForSearchResults(
   siteConfig: SearchEngine,
-  timeoutMs = 3500,
+  timeoutMs = 5000,
 ): Promise<SearchResultItem[]> {
   return new Promise((resolve) => {
     let settled = false
@@ -193,15 +193,19 @@ function waitForSearchResults(
       if (settled) return
       settled = true
       observer.disconnect()
+      window.clearInterval(interval)
       window.clearTimeout(timeout)
       resolve(results)
     }
-    const observer = new MutationObserver(() => {
+    const check = () => {
       const results = extractSearchResults(siteConfig)
       if (results.length > 0) finish(results)
-    })
-    const timeout = window.setTimeout(() => finish([]), timeoutMs)
-    observer.observe(document.body, { childList: true, subtree: true })
+    }
+    const observer = new MutationObserver(check)
+    const interval = window.setInterval(check, 160)
+    const timeout = window.setTimeout(() => finish(extractSearchResults(siteConfig)), timeoutMs)
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+    check()
   })
 }
 

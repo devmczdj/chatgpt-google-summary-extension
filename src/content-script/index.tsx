@@ -33,7 +33,7 @@ async function Run() {
   if (generation !== runGeneration || pageKey !== getBiliPageKey(window.location.href)) return
 
   if (questionData) {
-    mount({ ...questionData, pageKey })
+    await mount({ ...questionData, pageKey })
   }
 }
 
