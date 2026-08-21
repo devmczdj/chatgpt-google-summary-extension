@@ -10,22 +10,26 @@ import {
   hostname,
 } from '@/content-script/utils'
 import type { CaptionTrackOption, TranscriptItem } from '@/content-script/youtube-transcript'
+import { getBiliPageKey } from '@/utils/bilibili'
 
 interface MountProps {
   question: string | null
   transcript?: TranscriptItem[]
   langOptionsWithLink?: CaptionTrackOption[]
+  contentNotice?: string
+  pageKey?: string
 }
 
 export default async function mount(props: MountProps) {
   const siteConfig = sietConfigFn()
   const siteName = siteNameFn()
 
-  const { question, transcript, langOptionsWithLink } = props
+  const { question, transcript, langOptionsWithLink, contentNotice, pageKey } = props
   if (!siteConfig) {
     return
   }
   const userConfig = await getUserConfig()
+  if (pageKey && getBiliPageKey(window.location.href) !== pageKey) return
 
   const sites = Object.values(config).map((site) => {
     return site.siteValue
@@ -144,6 +148,7 @@ export default async function mount(props: MountProps) {
       container.classList.add('glarity--chatgpt--bilibili')
 
       waitForElm(siteConfig.extabarContainerQuery?.[0]).then(() => {
+        if (pageKey && getBiliPageKey(window.location.href) !== pageKey) return
         container.classList.add('glarity--chatgpt--bilibili')
         const appendContainer = getPossibleElementByQuerySelector(
           siteConfig.extabarContainerQuery || [],
@@ -194,6 +199,8 @@ export default async function mount(props: MountProps) {
       transcript={transcript}
       siteConfig={siteConfig}
       langOptionsWithLink={langOptionsWithLink}
+      contentNotice={contentNotice}
+      pageKey={pageKey}
       triggerMode={userConfig.triggerMode || 'always'}
     />,
     container,

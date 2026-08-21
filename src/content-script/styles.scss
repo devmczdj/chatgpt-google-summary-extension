@@ -107,7 +107,6 @@
         color: unset;
       }
     }
-
   }
 
   .glarity--chatgpt--header {
@@ -253,7 +252,9 @@
 .glarity--header {
   display: flex;
   gap: 8px;
-  padding: 4px 28px 8px 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 0 8px;
   min-height: 26px;
   justify-content: space-between;
   align-items: center;
@@ -294,7 +295,14 @@
 
 .glarity--header__controls {
   flex: 0 0 auto;
+  margin-left: auto;
   gap: 2px;
+}
+
+.glarity--header__stop {
+  flex: 0 0 auto;
+  height: 26px;
+  margin-right: 2px;
 }
 
 .glarity--header__button,
@@ -416,6 +424,26 @@
     height: 260px;
     overflow: hidden;
     overflow-y: auto;
+  }
+}
+
+.glarity--content-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 10px !important;
+  padding: 8px 9px;
+  border: 1px solid rgb(127 127 127 / 28%);
+  border-radius: 6px;
+  background: rgb(127 127 127 / 9%);
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  position: static;
+
+  svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
   }
 }
 .glarity--main__loading {

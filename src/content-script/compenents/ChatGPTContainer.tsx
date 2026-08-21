@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Spinner, GeistProvider, Loading, Divider } from '@geist-ui/core'
 import { SearchIcon } from '@primer/octicons-react'
 import Browser from 'webextension-polyfill'
@@ -22,6 +22,7 @@ import { queryParam } from 'gb-url'
 import getQuestion from '@/content-script/compenents/GetQuestion'
 import logo from '@/assets/img/logo-48.png'
 import type { CaptionTrackOption, TranscriptItem } from '@/content-script/youtube-transcript'
+import { getBiliPageKey } from '@/utils/bilibili'
 
 interface Props {
   question: string | null
@@ -30,6 +31,8 @@ interface Props {
   siteConfig: SearchEngine
   langOptionsWithLink?: CaptionTrackOption[]
   currentTime?: number
+  contentNotice?: string
+  pageKey?: string
 }
 
 function ChatGPTContainer(props: Props) {
@@ -46,6 +49,9 @@ function ChatGPTContainer(props: Props) {
   const [currentTranscript, setCurrentTranscript] = useState<TranscriptItem[]>(
     props.transcript || [],
   )
+  const refreshGeneration = useRef(0)
+  const stopGenerationRef = useRef<(() => void) | undefined>()
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const { triggerMode } = props
 
@@ -94,6 +100,15 @@ function ChatGPTContainer(props: Props) {
     Browser.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' })
   }, [])
 
+  const onGenerationChange = useCallback((generating: boolean, stop?: () => void) => {
+    stopGenerationRef.current = stop
+    setIsGenerating(generating)
+  }, [])
+
+  const stopGeneration = useCallback(() => {
+    stopGenerationRef.current?.()
+  }, [])
+
   const onRefresh = useCallback(async () => {
     if (loading) {
       return
@@ -101,10 +116,22 @@ function ChatGPTContainer(props: Props) {
 
     setLoading(true)
     setLatestAnswer('')
+    setCurrentTranscript([])
+    const generation = ++refreshGeneration.current
+    const pageKey = getBiliPageKey(window.location.href)
 
     let questionData = (await getQuestion()) as Props
 
+    if (
+      generation !== refreshGeneration.current ||
+      pageKey !== getBiliPageKey(window.location.href)
+    ) {
+      return
+    }
+
     if (!questionData) {
+      setQuestionProps({ ...props, question: null, transcript: [], contentNotice: undefined })
+      setQueryStatus(undefined)
       setLoading(false)
       return
     }
@@ -144,8 +171,10 @@ function ChatGPTContainer(props: Props) {
   }, [answerCopied])
 
   useEffect(() => {
+    refreshGeneration.current += 1
     setQuestionProps({ ...props })
-
+    setLatestAnswer('')
+    setQueryStatus(undefined)
     setCurrentTranscript(props.transcript ? [...props.transcript] : [])
   }, [props])
 
@@ -174,6 +203,46 @@ function ChatGPTContainer(props: Props) {
                 <span className="glarity--header__title">{APP_TITLE}</span>
               </span>
               <div className="glarity--header__controls glarity--chatgpt__action">
+                {isGenerating ? (
+                  <button
+                    type="button"
+                    className="glarity--generation-action glarity--header__stop"
+                    onClick={stopGeneration}
+                    title="Stop generating"
+                    aria-label="Stop generating"
+                  >
+                    <span className="glarity--stop-symbol" /> Stop
+                  </button>
+                ) : loading ? (
+                  <span className="glarity--header__status" aria-label="Regenerating">
+                    <Spinner className="glarity--icon--loading" />
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="glarity--header__button"
+                      onClick={onRefresh}
+                      title="Regenerate"
+                      aria-label="Regenerate"
+                    >
+                      <SyncIcon size={16} />
+                    </button>
+
+                    {latestAnswer && (
+                      <button
+                        type="button"
+                        className="glarity--header__button"
+                        onClick={copyLatestAnswer}
+                        title="Copy latest answer"
+                        aria-label="Copy latest answer"
+                      >
+                        {answerCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                      </button>
+                    )}
+                  </>
+                )}
+
                 <button
                   type="button"
                   className="glarity--header__button"
@@ -183,34 +252,6 @@ function ChatGPTContainer(props: Props) {
                 >
                   <GearIcon size={16} />
                 </button>
-
-                {loading ? (
-                  <span className="glarity--header__status" aria-label="Regenerating">
-                    <Spinner className="glarity--icon--loading" />
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="glarity--header__button"
-                    onClick={onRefresh}
-                    title="Regenerate"
-                    aria-label="Regenerate"
-                  >
-                    <SyncIcon size={16} />
-                  </button>
-                )}
-
-                {latestAnswer && (
-                  <button
-                    type="button"
-                    className="glarity--header__button"
-                    onClick={copyLatestAnswer}
-                    title="Copy latest answer"
-                    aria-label="Copy latest answer"
-                  >
-                    {answerCopied ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
-                  </button>
-                )}
 
                 <button
                   type="button"
@@ -251,6 +292,8 @@ function ChatGPTContainer(props: Props) {
                           triggerMode={questionProps.triggerMode}
                           onStatusChange={setQueryStatus}
                           onAnswerChange={setLatestAnswer}
+                          onGenerationChange={onGenerationChange}
+                          contentNotice={questionProps.contentNotice}
                           currentTime={questionProps.currentTime}
                         />
                       </>

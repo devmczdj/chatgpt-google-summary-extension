@@ -1,4 +1,4 @@
-import React from 'react'
+import type { ChangeEvent } from 'react'
 import { useCallback } from 'preact/hooks'
 import { Text, Code, Textarea, Card, Button, Snippet, Collapse, useToasts } from '@geist-ui/core'
 import { Space } from 'antd'
@@ -30,6 +30,8 @@ interface Props {
   setPromptComment: (promptComment: string) => void
 }
 
+type PromptType = 'video' | 'search' | 'page' | 'comment'
+
 function CustomizePrompt(props: Props) {
   const {
     prompt,
@@ -44,8 +46,8 @@ function CustomizePrompt(props: Props) {
   const { setToast } = useToasts()
 
   const onPromptChange = useCallback(
-    (e: React.ChangeEvent, type?: string | undefined) => {
-      const prompt = e.target.value || ''
+    (e: ChangeEvent<HTMLTextAreaElement>, type: PromptType) => {
+      const prompt = e.currentTarget.value
       switch (type) {
         case 'search': {
           setPromptSearch(prompt)
@@ -62,7 +64,7 @@ function CustomizePrompt(props: Props) {
           break
         }
 
-        default: {
+        case 'video': {
           setPrompt(prompt)
           break
         }
@@ -72,29 +74,29 @@ function CustomizePrompt(props: Props) {
   )
 
   const onSetPrompt = useCallback(
-    (type?: string) => {
+    async (type: PromptType) => {
       switch (type) {
         case 'search': {
           setPromptSearch(searchPromptHighlight)
-          updateUserConfig({ promptSearch: searchPromptHighlight })
+          await updateUserConfig({ promptSearch: searchPromptHighlight })
           break
         }
 
         case 'page': {
           setPromptPage(pageSummaryPromptHighlight)
-          updateUserConfig({ promptPage: pageSummaryPromptHighlight })
+          await updateUserConfig({ promptPage: pageSummaryPromptHighlight })
           break
         }
 
         case 'comment': {
           setPromptComment(commentSummaryPromptHightligt)
-          updateUserConfig({ promptComment: commentSummaryPromptHightligt })
+          await updateUserConfig({ promptComment: commentSummaryPromptHightligt })
           break
         }
 
-        default: {
+        case 'video': {
           setPrompt(videoSummaryPromptHightligt)
-          updateUserConfig({ prompt: videoSummaryPromptHightligt })
+          await updateUserConfig({ prompt: videoSummaryPromptHightligt })
           break
         }
       }
@@ -105,46 +107,18 @@ function CustomizePrompt(props: Props) {
   )
 
   const onSavePrompt = useCallback(
-    (type?: string) => {
-      switch (type) {
-        case 'search': {
-          setPromptSearch(promptSearch)
-          updateUserConfig({ promptSearch: promptSearch })
-          break
-        }
+    async (type: PromptType) => {
+      const updates = {
+        video: { prompt },
+        search: { promptSearch },
+        page: { promptPage },
+        comment: { promptComment },
+      }[type]
 
-        case 'page': {
-          setPromptPage(promptPage)
-          updateUserConfig({ promptPage: promptPage })
-          break
-        }
-
-        case 'comment': {
-          setPromptPage(promptComment)
-          updateUserConfig({ promptComment: promptComment })
-          break
-        }
-
-        default: {
-          setPrompt(prompt)
-          updateUserConfig({ prompt })
-          break
-        }
-      }
-
-      updateUserConfig({ prompt })
+      await updateUserConfig(updates)
       setToast(changeToast)
     },
-    [
-      prompt,
-      setToast,
-      setPromptSearch,
-      promptSearch,
-      setPromptPage,
-      promptPage,
-      promptComment,
-      setPrompt,
-    ],
+    [prompt, promptComment, promptPage, promptSearch, setToast],
   )
 
   return (
@@ -156,13 +130,7 @@ function CustomizePrompt(props: Props) {
           </Text>
           <Collapse.Group>
             {/* YouTube */}
-            <Collapse
-              title={
-                <Text h4 className="glarity--mt-5 glarity--mb-0">
-                  YouTube / Bilibili{' '}
-                </Text>
-              }
-            >
+            <Collapse title="YouTube / Bilibili">
               <Card className="glarity--card">
                 <Text className="glarity--my-1">
                   <Code block my={0}>
@@ -174,17 +142,28 @@ function CustomizePrompt(props: Props) {
                   placeholder="Please enter a Prompt."
                   value={prompt}
                   resize={'vertical'}
-                  onChange={(e: React.ChangeEvent) => {
-                    onPromptChange(e)
+                  onChange={(e) => {
+                    onPromptChange(e, 'video')
                   }}
                 />
 
                 <Card.Footer>
                   <Space>
-                    <Button type="secondary" auto scale={1 / 3} onClick={onSavePrompt}>
+                    <Button
+                      type="secondary"
+                      auto
+                      scale={1 / 3}
+                      onClick={() => void onSavePrompt('video')}
+                    >
                       Save
                     </Button>{' '}
-                    <Button type="secondary" ghost auto scale={1 / 3} onClick={onSetPrompt}>
+                    <Button
+                      type="secondary"
+                      ghost
+                      auto
+                      scale={1 / 3}
+                      onClick={() => void onSetPrompt('video')}
+                    >
                       Use default
                     </Button>
                   </Space>
@@ -228,13 +207,7 @@ function CustomizePrompt(props: Props) {
             </Collapse>
 
             {/* Google */}
-            <Collapse
-              title={
-                <Text h4 className="glarity--mt-5 glarity--mb-0">
-                  Google / Bing
-                </Text>
-              }
-            >
+            <Collapse title="Google / Bing">
               <Card className="glarity--card">
                 <Text className="glarity--my-1">
                   <Code block my={0}>
@@ -246,7 +219,7 @@ function CustomizePrompt(props: Props) {
                   placeholder="Please enter a Prompt."
                   value={promptSearch}
                   resize={'vertical'}
-                  onChange={(e: React.ChangeEvent) => {
+                  onChange={(e) => {
                     onPromptChange(e, 'search')
                   }}
                 />
@@ -258,7 +231,7 @@ function CustomizePrompt(props: Props) {
                       auto
                       scale={1 / 3}
                       onClick={() => {
-                        onSavePrompt('search')
+                        void onSavePrompt('search')
                       }}
                     >
                       Save
@@ -269,7 +242,7 @@ function CustomizePrompt(props: Props) {
                       auto
                       scale={1 / 3}
                       onClick={() => {
-                        onSetPrompt('search')
+                        void onSetPrompt('search')
                       }}
                     >
                       Use default
@@ -293,7 +266,7 @@ function CustomizePrompt(props: Props) {
                 <li>
                   {' '}
                   <Snippet symbol="" type="secondary">
-                    What's key takeaways from the above?{' '}
+                    {`What's key takeaways from the above?`}{' '}
                   </Snippet>
                 </li>
                 <li>
@@ -305,13 +278,7 @@ function CustomizePrompt(props: Props) {
             </Collapse>
 
             {/* Page Summary */}
-            <Collapse
-              title={
-                <Text h4 className="glarity--mt-5 glarity--mb-0">
-                  Page Summary{' '}
-                </Text>
-              }
-            >
+            <Collapse title="Page Summary">
               <Card className="glarity--card">
                 <Text className="glarity--my-1">
                   <Code block my={0}>
@@ -323,7 +290,7 @@ function CustomizePrompt(props: Props) {
                   placeholder="Please enter a Prompt."
                   value={promptPage}
                   resize={'vertical'}
-                  onChange={(e: React.ChangeEvent) => {
+                  onChange={(e) => {
                     onPromptChange(e, 'page')
                   }}
                 />
@@ -335,7 +302,7 @@ function CustomizePrompt(props: Props) {
                       auto
                       scale={1 / 3}
                       onClick={() => {
-                        onSavePrompt('page')
+                        void onSavePrompt('page')
                       }}
                     >
                       Save
@@ -346,7 +313,7 @@ function CustomizePrompt(props: Props) {
                       auto
                       scale={1 / 3}
                       onClick={() => {
-                        onSetPrompt('page')
+                        void onSetPrompt('page')
                       }}
                     >
                       Use default
@@ -370,7 +337,7 @@ function CustomizePrompt(props: Props) {
                 <li>
                   {' '}
                   <Snippet symbol="" type="secondary">
-                    What's key takeaways from the above?{' '}
+                    {`What's key takeaways from the above?`}{' '}
                   </Snippet>
                 </li>
                 <li>
@@ -383,14 +350,8 @@ function CustomizePrompt(props: Props) {
 
             {/* Comment Summary */}
             <Collapse
-              title={
-                <Text h4 className="glarity--mt-5 glarity--mb-0">
-                  Comment Summary{' '}
-                  <Text span font="12px" className="glarity--subtitle">
-                    Summary of support for Amazon products and YouTube video comments.
-                  </Text>
-                </Text>
-              }
+              title="Comment Summary"
+              subtitle="Summary of support for Amazon products and YouTube video comments."
             >
               <Card className="glarity--card">
                 <Text className="glarity--my-1">
@@ -403,7 +364,7 @@ function CustomizePrompt(props: Props) {
                   placeholder="Please enter a Prompt."
                   value={promptComment}
                   resize={'vertical'}
-                  onChange={(e: React.ChangeEvent) => {
+                  onChange={(e) => {
                     onPromptChange(e, 'comment')
                   }}
                 />
@@ -415,7 +376,7 @@ function CustomizePrompt(props: Props) {
                       auto
                       scale={1 / 3}
                       onClick={() => {
-                        onSavePrompt('comment')
+                        void onSavePrompt('comment')
                       }}
                     >
                       Save
@@ -426,7 +387,7 @@ function CustomizePrompt(props: Props) {
                       auto
                       scale={1 / 3}
                       onClick={() => {
-                        onSetPrompt('comment')
+                        void onSetPrompt('comment')
                       }}
                     >
                       Use default

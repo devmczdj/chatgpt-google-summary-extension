@@ -6,7 +6,7 @@ import PageSummary from '@/content-script/compenents/PageSummary'
 import mount from '@/content-script/compenents/Mount'
 import getQuestion from './compenents/GetQuestion'
 import { siteConfig as sietConfigFn } from './utils'
-import { getBiliVideoId } from '@/utils/bilibili'
+import { getBiliPageKey } from '@/utils/bilibili'
 import '@/content-script/styles.scss'
 
 const siteConfig = sietConfigFn()
@@ -21,24 +21,19 @@ function ensurePageSummary() {
   render(<PageSummary />, container)
 }
 
-function getPageKey() {
-  const videoId = getBiliVideoId(window.location.href)
-  if (!videoId) return window.location.href
-
-  const page = new URL(window.location.href).searchParams.get('p') || '1'
-  return `${videoId}:p=${page}`
-}
-
 async function Run() {
   ensurePageSummary()
   const generation = ++runGeneration
-  const pageKey = getPageKey()
+  const pageKey = getBiliPageKey(window.location.href)
+
+  // Never leave a previous video's answer visible while the next route is loading.
+  document.querySelector('section.glarity--container')?.remove()
 
   const questionData = await getQuestion()
-  if (generation !== runGeneration || pageKey !== getPageKey()) return
+  if (generation !== runGeneration || pageKey !== getBiliPageKey(window.location.href)) return
 
   if (questionData) {
-    mount(questionData)
+    mount({ ...questionData, pageKey })
   }
 }
 

@@ -240,6 +240,7 @@ export async function fetchBilibiliTranscript(
 
   if (tracks.length === 0) {
     if (!receivedSuccessfulResponse && lastError) throw lastError
+    transcriptCache.set(cacheKey, [])
     return []
   }
 
@@ -248,6 +249,6 @@ export async function fetchBilibiliTranscript(
   if (!subtitleUrl) throw new Error('Bilibili subtitle URL is missing or invalid')
 
   const body = normalizeSubtitleBody(await fetchJson(subtitleUrl))
-  if (body.length > 0) transcriptCache.set(cacheKey, body)
+  transcriptCache.set(cacheKey, body)
   return body
 }

@@ -277,25 +277,22 @@ export default async function getQuestion() {
 
     const transcriptList = await getBiliTranscript(window.location.href)
 
-    if (!transcriptList) {
+    if (
+      !transcriptList ||
+      getBiliVideoId(window.location.href)?.toUpperCase() !== id.toUpperCase()
+    ) {
       return
     }
 
-    const { transcript = [], desc } = transcriptList
+    const { transcript = [], fallbackContent, contentSource, sourceNotice } = transcriptList
     const videoTitle = document.title
-    let videoDesc =
-      document?.querySelector('meta[name="description"]')?.getAttribute('content') || ''
-    videoDesc = videoDesc.split('视频播放量')[0]
+    const content =
+      transcript.length > 0 ? transcript.map((item) => item.text).join('') : fallbackContent || ''
 
-    const content = transcript
-      ? (
-          transcript.map((v) => {
-            return `${v.text}`
-          }) || []
-        ).join('')
-      : desc + videoDesc
-
-    const Instructions = userConfig.prompt ? `${userConfig.prompt}` : videoSummaryPromptHightligt
+    let Instructions = userConfig.prompt ? `${userConfig.prompt}` : videoSummaryPromptHightligt
+    if (contentSource === 'page-context') {
+      Instructions = `The video has no official transcript. Summarize only the supplied metadata and viewer discussion. Clearly distinguish factual metadata from viewer reactions. Do not invent spoken dialogue, scenes, events, or claims that are not supported by the supplied text. Mention that the summary is based on page context rather than a transcript.\n\n${Instructions}`
+    }
 
     const queryText = videoPrompt({
       title: videoTitle,
@@ -306,7 +303,8 @@ export default async function getQuestion() {
 
     return {
       question: content ? queryText : null,
-      transcript: transcript || [],
+      transcript,
+      contentNotice: sourceNotice,
     }
   }
 

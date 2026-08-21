@@ -9,6 +9,7 @@ import { Answer } from '@/messaging'
 import { isBraveBrowser } from '@/content-script/utils'
 import { BASE_URL } from '@/config'
 import { isIOS, isSafari } from '@/utils/utils'
+import ContentNotice from './ContentNotice'
 
 import '@/content-script/styles.scss'
 
@@ -18,6 +19,8 @@ interface Props {
   question: string
   onStatusChange?: (status: QueryStatus) => void
   onAnswerChange?: (answer: string) => void
+  onGenerationChange?: (generating: boolean, stop?: () => void) => void
+  contentNotice?: string
   currentTime?: number
 }
 
@@ -43,7 +46,14 @@ const markdownComponents = {
 }
 
 function ChatGPTQuery(props: Props) {
-  const { onStatusChange, onAnswerChange, currentTime, question } = props
+  const {
+    onStatusChange,
+    onAnswerChange,
+    onGenerationChange,
+    contentNotice,
+    currentTime,
+    question,
+  } = props
 
   const [answer, setAnswer] = useState<Answer | null>(null)
   const [completedTurns, setCompletedTurns] = useState<CompletedTurn[]>([])
@@ -165,6 +175,12 @@ function ChatGPTQuery(props: Props) {
   }, [answer, onAnswerChange])
 
   useEffect(() => {
+    const generating = !done && !error && !stopped
+    onGenerationChange?.(generating, generating ? stopGeneration : undefined)
+    return () => onGenerationChange?.(false)
+  }, [done, error, onGenerationChange, stopGeneration, stopped])
+
+  useEffect(() => {
     disconnect()
     setCompletedTurns([])
     setCurrentQuestion(undefined)
@@ -210,15 +226,8 @@ function ChatGPTQuery(props: Props) {
   if (hasConversation) {
     return (
       <div className="markdown-body gpt-markdown" id="gpt-answer" dir="auto">
-        <div className="glarity--chatgpt--header">
-          {!done ? (
-            <button className="glarity--generation-action" onClick={stopGeneration}>
-              <span className="glarity--stop-symbol" /> Stop
-            </button>
-          ) : null}
-        </div>
-
         <div className="glarity--chatgpt--content" ref={wrapRef}>
+          <ContentNotice>{contentNotice}</ContentNotice>
           {completedTurns.map((turn, index) => (
             <div className="glarity--conversation-turn" key={index}>
               {turn.question && <div className="glarity--user-message">{turn.question}</div>}
@@ -324,11 +333,7 @@ function ChatGPTQuery(props: Props) {
 
   return (
     <div className="glarity--query-loading">
-      <div className="glarity--chatgpt--header">
-        <button className="glarity--generation-action" onClick={stopGeneration}>
-          <span className="glarity--stop-symbol" /> Stop
-        </button>
-      </div>
+      <ContentNotice>{contentNotice}</ContentNotice>
       <Loading />
     </div>
   )
