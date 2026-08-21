@@ -162,15 +162,4 @@ export const APP_TITLE = `AI Page Summary`
 export const DEFAULT_MODEL = 'gpt-4o-mini'
 export const DEFAULT_API_URL = 'https://api.openai.com/v1/chat/completions'
 
-export function normalizeChatCompletionsUrl(value: string): string {
-  const url = new URL(value.trim())
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error('API URL must use http:// or https://')
-  }
-
-  url.pathname = url.pathname.replace(/\/$/, '')
-  if (!url.pathname.endsWith('/chat/completions')) {
-    url.pathname += '/chat/completions'
-  }
-  return url.toString()
-}
+export { normalizeChatCompletionsUrl } from './api-url'

@@ -16,12 +16,12 @@
 - API Key（通过 `Authorization: Bearer ...` 发送）
 - 模型名称
 
-只要服务实现了 OpenAI Chat Completions 请求格式和 SSE 流式响应，就可以接入 OpenAI、DeepSeek、Kimi、MiMo、GLM 或自建网关。填写 Base URL 时，扩展会自动补全 `/chat/completions`。
+只要服务实现了 OpenAI Chat Completions 请求格式和 SSE 流式响应，就可以接入 OpenAI、DeepSeek、Kimi、MiMo、GLM 或自建网关。仅填写主机名时会补成 `/v1/chat/completions`；已有路径的 Base URL 则追加 `/chat/completions`。
 
 | 服务 | Base URL 示例 |
 | --- | --- |
 | OpenAI | `https://api.openai.com/v1` |
-| DeepSeek | `https://api.deepseek.com` |
+| DeepSeek | `https://api.deepseek.com/v1` |
 | Kimi | `https://api.moonshot.ai/v1` |
 | MiMo | `https://api.xiaomimimo.com/v1` |
 | GLM | `https://open.bigmodel.cn/api/paas/v4` |
@@ -38,7 +38,7 @@ npm run build
 - Chromium：在扩展管理页开启开发者模式，加载 `build/chromium/`。
 - Firefox：在 `about:debugging` 中临时加载 `build/firefox.zip`。
 
-由于兼容接口允许填写任意服务地址，扩展需要申请所有 URL 的主机访问权限。API Key 保存在浏览器扩展的本地存储中，请求由扩展直接发送至所选服务。
+扩展会申请访问所有网站，因为页面总结内容脚本可在任意网页运行，且 OpenAI 兼容接口可能位于用户填写的域名。API Key 保存在浏览器扩展的本地存储中，请求由扩展直接发送至所选服务。
 
 ## 上游与许可
 
