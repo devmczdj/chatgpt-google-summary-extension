@@ -20,14 +20,14 @@ The options page accepts all three values as free text:
 
 This works with services that implement the OpenAI Chat Completions request and SSE streaming
 format, including compatible endpoints from OpenAI, DeepSeek, Kimi, MiMo, GLM, and self-hosted
-gateways. The extension appends `/chat/completions` when a base URL is entered.
+gateways. Hostname-only bases get `/v1/chat/completions`; other base paths get `/chat/completions` appended.
 
 Example base URLs:
 
 | Provider | Base URL |
 | --- | --- |
 | OpenAI | `https://api.openai.com/v1` |
-| DeepSeek | `https://api.deepseek.com` |
+| DeepSeek | `https://api.deepseek.com/v1` |
 | Kimi | `https://api.moonshot.ai/v1` |
 | MiMo | `https://api.xiaomimimo.com/v1` |
 | GLM | `https://open.bigmodel.cn/api/paas/v4` |
@@ -45,9 +45,9 @@ npm run build
 Load `build/chromium/` as an unpacked extension in Chromium, or load `build/firefox.zip` as a
 temporary Firefox add-on.
 
-The compatible API can point to any user-supplied host, so the extension requests all-URL host
-permission. API keys are stored in the browser extension's local storage and requests are sent
-directly to the selected endpoint.
+Custom API hosts are requested as optional host permissions when you save an API URL. Built-in
+ChatGPT and Bilibili hosts stay in the required host permissions. API keys are stored in the
+browser extension's local storage and requests are sent directly to the selected endpoint.
 
 ## Upstream and license
 

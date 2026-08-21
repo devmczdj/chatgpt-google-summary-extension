@@ -1,5 +1,6 @@
 node_modules/
 build/
+packages/
 .DS_Store
 .env
 docs/

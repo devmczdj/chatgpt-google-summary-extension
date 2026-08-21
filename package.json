@@ -1,9 +1,10 @@
 {
   "name": "ai-page-summary-extension",
-  "author": "givebest",
+  "author": "DING ZIJIAN",
   "scripts": {
     "dev": "cross-env NODE_ENV='dev' node build.mjs",
     "build": "cross-env NODE_ENV='production' node build.mjs",
+    "test": "node --test scripts/normalize-url.test.mjs",
     "lint": "eslint --ext .js,.mjs,.jsx .",
     "lint:fix": "eslint --ext .js,.mjs,.jsx . --fix",
     "prepare": "husky install",
